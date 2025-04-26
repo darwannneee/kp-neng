@@ -1,10 +1,8 @@
 "use client"
-
 import Logo from "@/public/img/Logo Ecoute.png"
-import { useState } from "react"
-import {Lora} from "next/font/google"
+import { useState, useEffect } from "react"
+import { Lora } from "next/font/google"
 import Search from "@/public/img/search.png"
-
 
 const LoraFont = Lora({
     weight: '400',
@@ -13,9 +11,26 @@ const LoraFont = Lora({
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.scrollY > 0) {
+                setIsScrolled(true);
+            } else {
+                setIsScrolled(false);
+            }
+        };
+
+        window.addEventListener("scroll", handleScroll);
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+        };
+    }, []);
 
     return (
-        <nav className={`${LoraFont.className} w-full fixed z-50 bg-white`}>
+        <nav className={`${LoraFont.className} w-full fixed z-50 ${isScrolled ? 'bg-white' : 'bg-transparent'}`}>
             <div className="flex flex-col gap-y-1 bg-gray-100">
                 <h1 className="text-center text-xs">Sign up for our newsletter and get 10% off one order.</h1>
                 <hr className="border-t-[0.2px] border-gray-300" />
