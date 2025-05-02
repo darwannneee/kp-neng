@@ -1,80 +1,188 @@
-import Instragram from "@/public/img/instagram.png"
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+import InstagramIcon from '@/public/img/instagram.png';
+import Link from 'next/link';
 
-export default function Footer() {
-    return (
-    <footer className="bg-white">
-      <div className="max-w-7xl mx-auto py-12 px-4 overflow-hidden">
-        <nav className="-mx-5 -my-2 flex flex-wrap justify-between">
-          <div className="px-5 py-2">
-            <h2 className="text-xl font-medium text-gray-500">Get in touch</h2>
-            <ul className="mt-4 space-y-4">
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Contact us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Store locator
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Affiliates
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Career
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Press
-                </a>
-              </li>
+export default function EnhancedFooter() {
+  // State for accordion functionality on mobile
+  const [openSection, setOpenSection] = useState(null);
+  // State to track if viewport is mobile size
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Toggle section visibility for mobile accordion
+  const toggleSection = (section: any) => {
+    setOpenSection(openSection === section ? null : section);
+  };
+
+  useEffect(() => {
+    // This runs only on the client after component mounts
+    setIsMobile(window.innerWidth < 768);
+    
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  return (
+    <footer className="bg-white border-t border-gray-100">
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        {/* Main footer content */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Get in touch section */}
+          <div className="border-b md:border-0 pb-4 md:pb-0">
+            <div 
+              className="flex justify-between items-center cursor-pointer md:cursor-default"
+              onClick={() => toggleSection('contact')}
+            >
+              <h2 className="text-lg font-semibold text-gray-800">Hubungi Kami</h2>
+              <svg 
+                className={`w-5 h-5 md:hidden transition-transform duration-300 ${openSection === 'contact' ? 'rotate-180' : ''}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            
+            <ul className={`mt-4 space-y-3 ${openSection === 'contact' || !isMobile ? 'block' : 'hidden md:block'}`}>
+              {[
+                {name: 'Kontak kami', link: '/contact'},
+                {name: 'Lokasi toko', link: '/stores'}, 
+                {name: 'Afiliasi', link: '/affiliate'}, 
+                {name: 'Karir', link: '/careers'}, 
+                {name: 'Media', link: '/press'}
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link 
+                    href={item.link}
+                    className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 inline-block border-b border-transparent hover:border-gray-900"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="px-5 py-2">
-            <h2 className="text-xl font-medium text-gray-500">About</h2>
-            <ul className="mt-4 space-y-4">
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  About us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-sm text-gray-500 hover:text-gray-900">
-                  Sustainability
-                </a>
-              </li>
+          
+          {/* About section */}
+          <div className="border-b md:border-0 pb-4 md:pb-0">
+            <div 
+              className="flex justify-between items-center cursor-pointer md:cursor-default"
+              onClick={() => toggleSection('about')}
+            >
+              <h2 className="text-lg font-semibold text-gray-800">Tentang</h2>
+              <svg 
+                className={`w-5 h-5 md:hidden transition-transform duration-300 ${openSection === 'about' ? 'rotate-180' : ''}`} 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+            
+            <ul className={`mt-4 space-y-3 ${openSection === 'about' || !isMobile ? 'block' : 'hidden md:block'}`}>
+              {[
+                {name: 'Tentang kami', link: '/about'}, 
+                {name: 'Keberlanjutan', link: '/sustainability'}, 
+                {name: 'Nilai-nilai kami', link: '/values'}, 
+                {name: 'Kebijakan Privasi', link: '/privacy'}
+              ].map((item) => (
+                <li key={item.name}>
+                  <Link 
+                    href={item.link}
+                    className="text-sm text-gray-500 hover:text-gray-900 transition-colors duration-200 inline-block border-b border-transparent hover:border-gray-900"
+                  >
+                    {item.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="px-5 py-2">
-            <h2 className="text-xl font-medium text-gray-500">Subscribe to our newsletter</h2>
-            <p className="mt-4 text-sm text-gray-500">
-              Subscribe to our newsletter to keep up with our world and receive 10% off your next order.
+          
+          {/* Newsletter section */}
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">Berlangganan newsletter kami</h2>
+            <p className="mt-4 text-sm text-gray-500 leading-relaxed">
+              Berlangganan newsletter kami untuk mendapatkan informasi terbaru dan diskon 10% untuk pembelian berikutnya.
             </p>
-            <button className="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Sign up
-            </button>
+            
+            {/* Email input with button */}
+            <div className="mt-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  placeholder="Alamat email Anda"
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-gray-500 focus:border-gray-500 flex-grow"
+                />
+                <button className="bg-gray-900 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors duration-200">
+                  Daftar
+                </button>
+              </div>
+            </div>
           </div>
-        </nav>
-        <div className="mt-8 border-t border-gray-200 pt-8 md:flex md:items-center md:justify-between">
-          <div className="flex space-x-6 md:order-2">
-            <a href="#" className="text-gray-400 hover:text-gray-500">
-                <span className="sr-only">Instagram</span>
-                <img src={Instragram.src} className="w-6" alt="" />
-            </a>
+        </div>
+        
+        {/* Social media and copyright section */}
+        <div className="mt-10 pt-6 border-t border-gray-200">
+          <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-6">
+            {/* Copyright */}
+            <div>
+              <p className="text-sm text-gray-500">
+                &copy; 2025 & Ecoute. Hak cipta dilindungi.
+              </p>
+            </div>
+            
+            {/* Social media links */}
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-gray-500">Ikuti kami:</span>
+              <div className="flex space-x-4">
+                {['instagram'].map((social) => (
+                  <a 
+                    key={social}
+                    href="#" 
+                    className="text-gray-400 hover:text-gray-800 transition-colors duration-200"
+                    aria-label={`Ikuti kami di ${social}`}
+                  >
+                    {social === 'instagram' ? (
+                      <div className="w-6 h-6 relative">
+                        <Image 
+                          src={InstagramIcon} 
+                          alt="Instagram"
+                          layout="fill"
+                          objectFit="contain"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-400 hover:border-gray-800">
+                        <span className="text-xs font-medium">{social.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="mt-8 md:mt-0 md:order-1">
-            <p className="text-center text-base text-gray-400">
-              &copy; 2025 & Ecoute
-            </p>
+          
+          {/* Payment methods */}
+          <div className="mt-6 flex justify-center md:justify-start">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">Kami menerima:</span>
+              <div className="flex space-x-2">
+                {['Visa', 'Mastercard', 'BCA', 'Mandiri'].map((payment) => (
+                  <div key={payment} className="text-xs font-medium text-gray-600 border border-gray-300 rounded px-2 py-1">
+                    {payment}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </footer>
-
-    )
+  );
 }

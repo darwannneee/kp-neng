@@ -28,35 +28,35 @@ const newProducts = [
     name: 'Ruffle Maxi Dress',
     colours: 2,
     price: '$179',
-    image: 'https://www.stories.com/static-images/products/assets/005/09/36/0936c4ae2e3335be1ae01edbb474ff5ce09b4a0a_xxl-1.jpg?imwidth=2560', // Example image URL structure from the site
+    image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW0ucG5nIiwiaWF0IjoxNzQ1NzI5NTk5LCJleHAiOjE3NzcyNjU1OTl9.-8wIQ78HpXx6mXTYPlpjA5xlIfy1qmdjJiv9lohE9zg', // Example image URL structure from the site
   },
   {
     id: 2,
     name: 'Buckled Strappy Slingback Ballerinas',
     colours: 2,
     price: '$159',
-    image: 'https://www.stories.com/static-images/products/assets/005/3c/49/3c49cabc773d6ba0336bbf92ac0c114ef0952e07_xxl-1.jpg?imwidth=2560',
+    image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum2.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW0yLnBuZyIsImlhdCI6MTc0NTcyOTYyMiwiZXhwIjoxNzc3MjY1NjIyfQ.LFwNsdZcN_ykva28APIEpgckltXeJtcFD-UqVFI1VrM',
   },
   {
     id: 3,
     name: 'Draped Sleeveless Midi Dress',
     colours: 3,
     price: '$99',
-    image: 'https://www.stories.com/static-images/products/assets/005/a6/26/a626ef5f8cdc902ff2fd1e373fc65f5e24c63ba5_xxl-1.jpg?imwidth=2560',
+    image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum3.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW0zLnBuZyIsImlhdCI6MTc0NTcyOTYzNywiZXhwIjoxNzc3MjY1NjM3fQ.WdYdrl28e8ney230kt9JGGudOMEfPvtmfQgzozerA4M',
   },
   {
     id: 5,
     name: 'Relaxed Drawstring Trousers',
     colours: 4,
     price: '$119',
-    image: 'https://www.stories.com/static-images/products/assets/005/8f/9c/8f9caa5986dab88089d522b53366831e4da337a7_xxl-1.jpg?imwidth=2560',
+    image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum4.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW00LnBuZyIsImlhdCI6MTc0NTcyOTY1NiwiZXhwIjoxNzc3MjY1NjU2fQ.dwrJG_-5YaDOMRPwT3ovzHdXF5D5bH0g7qxWcIl1Opo',
   },
   {
     id: 6,
     name: 'Relaxed Drawstring Trousers',
     colours: 4,
     price: '$119',
-    image: 'https://www.stories.com/static-images/products/assets/005/8f/9c/8f9caa5986dab88089d522b53366831e4da337a7_xxl-1.jpg?imwidth=2560',
+    image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum5.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW01LnBuZyIsImlhdCI6MTc0NTcyOTY2NiwiZXhwIjoxNzc3MjY1NjY2fQ.XOJ7vpFnWT_C7881xwFbyRsF3ayG5Ne2GM3yC7Vav9M',
   },
   {
     id: 7,
@@ -191,7 +191,7 @@ export default function Home() {
       <div className="w-full items-center">
         <div
           className="w-full md:w-[100%] h-screen md:h-[600px] bg-cover flex flex-col justify-center gap-y-4 md:gap-y-7 items-center relative" // Added relative for potential button inside
-          style={{ backgroundImage: 'url("https://lp.stories.com/app005prod?set=key%5Bresolve.pixelRatio%5D,value%5B2%5D&set=key%5Bresolve.width%5D,value%5B1650%5D&set=key%5Bresolve.height%5D,value%5B10000%5D&set=key%5Bresolve.imageFit%5D,value%5Bcontainerwidth%5D&set=key%5Bresolve.allowImageUpscaling%5D,value%5B0%5D&set=key%5Bresolve.format%5D,value%5Bwebp%5D&set=key%5Bresolve.quality%5D,value%5B80%5D&source=url%5Bhttps%3A%2F%2Fwww.stories.com%2Fcontent%2Fdam%2FStories%2FImages%2F2025%2Fcampaign%2F2513-101%2FIM_25_13_062_16x9.jpg%5D&scale=options%5Blimit%5D,size%5B1650x10000%5D&sink=format%5Bwebp%5D,quality%5B80%5D")' }}
+          style={{ backgroundImage: 'url("https://www.stories.com/static-images/sb/2143x3000/217cffba4d/im_25_17_020_5x7.jpg?imwidth=1920")' }}
         >
           {/* Added text shadow for better readability on image */}
           <h1 className={`${MontserratFont.className} text-white font-bold text-shadow-md`}>VERSATILE ELEGANCE</h1>
