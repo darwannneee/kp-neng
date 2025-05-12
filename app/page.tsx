@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Lora, Lacquer, Montserrat } from "next/font/google";
 import Footer from "@/components/Footer";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { VariantSize } from "@/utils/types";
 // Import icon if you want to add the heart icon
 // import { HeartIcon } from '@heroicons/react/24/outline'; // Example using Heroicons
 
@@ -19,6 +21,30 @@ const MontserratFont = Montserrat({
   weight: '400',
   subsets: ['latin']
 })
+
+interface Product {
+  id: number;
+  name: string;
+  price: string;
+  description: string;
+  image_url: string;
+  category_id: string;
+  admin_id: string;
+  admin?: {
+    username: string;
+    id: string;
+    image_url?: string;
+  };
+}
+
+interface VariantFormData {
+  name: string;
+  price: string | null;
+  stock: number;
+  image: File | null;
+  sizes: VariantSize[];
+  [key: string]: any; // Allow dynamic fields for form handling
+}
 
 // --- Define Product Data ---
 // In a real application, this data would likely come from an API
@@ -97,6 +123,7 @@ const trendingProducts = [
 
 
 export default function Home() {
+  const router = useRouter();
   const scrollContainer = useRef<HTMLDivElement | null>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [maxScroll, setMaxScroll] = useState(0);
@@ -105,7 +132,27 @@ export default function Home() {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [hoveredItem, setHoveredItem] = useState(null);
   const [hoveredSide, setHoveredSide] = useState<string | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch("/api/admin/products?include=admin");
+      if (!res.ok) {
+        throw new Error("Failed to fetch products");
+      }
+      const data = await res.json();
+      setProducts(data);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const container = scrollContainer.current;
@@ -121,7 +168,7 @@ export default function Home() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [products]);
 
   const handleScrollUpdate = () => {
     if (scrollContainer.current) {
@@ -150,33 +197,35 @@ export default function Home() {
   };
 
   // Dragging functionality
-  const handleMouseDown = (e: { pageX: number; }) => {
-    if (!scrollContainer.current) return;
+  const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
-    setStartX(e.pageX - scrollContainer.current.offsetLeft);
-    setScrollLeft(scrollContainer.current.scrollLeft);
+    setStartX(e.pageX - (scrollContainer.current?.offsetLeft || 0));
+    setScrollLeft(scrollContainer.current?.scrollLeft || 0);
   };
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!scrollContainer.current) return;
-    setIsDragging(true);
-    setStartX(e.touches[0].pageX - scrollContainer.current.offsetLeft);
-    setScrollLeft(scrollContainer.current.scrollLeft);
-  };
-
-  const handleMouseMove = (e: { preventDefault: () => void; pageX: number; }) => {
-    if (!isDragging || !scrollContainer.current) return;
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
     e.preventDefault();
-    const x = e.pageX - scrollContainer.current.offsetLeft;
-    const walk = (x - startX) * 2; // Adjust scrolling speed
-    scrollContainer.current.scrollLeft = scrollLeft - walk;
+    const x = e.pageX - (scrollContainer.current?.offsetLeft || 0);
+    const walk = (x - startX) * 2;
+    if (scrollContainer.current) {
+      scrollContainer.current.scrollLeft = scrollLeft - walk;
+    }
   };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isDragging || !scrollContainer.current) return;
-    const x = e.touches[0].pageX - scrollContainer.current.offsetLeft;
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setIsDragging(true);
+    setStartX(e.touches[0].pageX - (scrollContainer.current?.offsetLeft || 0));
+    setScrollLeft(scrollContainer.current?.scrollLeft || 0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const x = e.touches[0].pageX - (scrollContainer.current?.offsetLeft || 0);
     const walk = (x - startX) * 2;
-    scrollContainer.current.scrollLeft = scrollLeft - walk;
+    if (scrollContainer.current) {
+      scrollContainer.current.scrollLeft = scrollLeft - walk;
+    }
   };
 
   const handleDragEnd = () => {
@@ -248,54 +297,60 @@ export default function Home() {
       </div>
       
       {/* Carousel container */}
-      <div 
-        ref={scrollContainer}
-        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
-        style={{ scrollBehavior: 'smooth', cursor: isDragging ? 'grabbing' : 'grab'}}
-        onScroll={handleScrollUpdate}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleDragEnd}
-        onMouseLeave={handleDragEnd}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleDragEnd}
-      >
-        {newProducts.map((product) => (
-          <div 
-            key={product.id} 
-            className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-2 snap-start"
-          >
-            <div className="group relative">
-              <div className="w-full overflow-hidden bg-gray-200 lg:aspect-none group-hover:opacity-75 h-[420px] relative">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  layout="fill"
-                  objectFit="cover"
-                  className="h-full w-full"
-                />
-              </div>
-              <div className="mt-4 flex flex-col text-sm">
-                <h3 className="text-gray-700 font-medium">
-                  <span aria-hidden="true" className="absolute inset-0" />
-                  {product.name}
-                </h3>
-                <p className="text-gray-500 mt-1">Colours ({product.colours})</p>
-                <p className="font-medium text-gray-900 mt-1">{product.price}</p>
+      {isLoading ? (
+        <div className="flex justify-center items-center min-h-[420px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        </div>
+      ) : (
+        <div 
+          ref={scrollContainer}
+          className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+          style={{ scrollBehavior: 'smooth', cursor: isDragging ? 'grabbing' : 'grab'}}
+          onScroll={handleScrollUpdate}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleDragEnd}
+          onMouseLeave={handleDragEnd}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleDragEnd}
+        >
+          {products.map((product) => (
+            <div 
+              key={product.id} 
+              className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-2 snap-start cursor-pointer"
+              onClick={() => router.push(`/productdetails/${product.id}`)}
+            >
+              <div className="group relative">
+                <div className="w-full overflow-hidden bg-gray-200 lg:aspect-none group-hover:opacity-75 h-[420px] relative">
+                  <Image
+                    src={product.image_url}
+                    alt={product.name}
+                    fill
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="mt-4 flex flex-col text-sm">
+                  <h3 className="text-gray-700 font-medium">
+                    <span aria-hidden="true" className="absolute inset-0" />
+                    {product.name}
+                  </h3>
+                  <p className="text-gray-500 mt-1">{product.description}</p>
+                  <p className="font-medium text-gray-900 mt-1">Rp {product.price}</p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
       {/* Mobile indicator */}
       <div className="mt-6 flex justify-center space-x-2">
-        {newProducts.map((_, index) => (
+        {products.map((_, index) => (
           <div 
             key={index} 
             className={`h-1 rounded-full ${
-              Math.floor(scrollPosition / (maxScroll / newProducts.length)) === index 
+              Math.floor(scrollPosition / (maxScroll / products.length)) === index 
                 ? 'w-4 bg-gray-800' 
                 : 'w-1 bg-gray-300'
             }`}

@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import supabase from "@/utils/supabase/client";
-import { createClient } from "@supabase/supabase-js";
 import { validateSuperadmin } from "@/app/api/admin/validateSuperadmin"; // Anda perlu membuat file ini
 import bcrypt from 'bcryptjs'; // Digunakan untuk hashing password
 import { v4 as uuidv4 } from 'uuid'; // Untuk membuat UUID unik
-
-// Inisialisasi Supabase dengan kunci service_role untuk hak akses penuh
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! // Gunakan service_role key
-);
+import supabase from "@/utils/supabase/client";
 
 // Fungsi helper untuk mengunggah gambar
 const uploadImage = async (file: File | null): Promise<string | null> => {
@@ -19,7 +12,7 @@ const uploadImage = async (file: File | null): Promise<string | null> => {
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `admin_profile_pictures/${fileName}`;
 
-    const { data, error } = await supabaseAdmin.storage
+    const { data, error } = await supabase.storage
         .from('images') // Ganti dengan nama bucket storage Anda jika berbeda
         .upload(filePath, file, {
             cacheControl: '3600',
@@ -32,7 +25,7 @@ const uploadImage = async (file: File | null): Promise<string | null> => {
     }
 
     // Dapatkan URL publik
-    const { data: publicUrlData } = supabaseAdmin.storage
+    const { data: publicUrlData } = supabase.storage
         .from('images') // Ganti dengan nama bucket storage Anda jika berbeda
         .getPublicUrl(filePath);
 
@@ -53,7 +46,7 @@ const deleteImage = async (imageUrl: string | null) => {
             return; // Avoid deleting random files
         }
 
-        const { error } = await supabaseAdmin.storage
+        const { error } = await supabase.storage
             .from('images') // Ganti dengan nama bucket storage Anda
             .remove([path]);
 
@@ -74,7 +67,7 @@ export async function GET(req: NextRequest) {
     if (validation) return validation; // Return response if not authorized
 
     try {
-        const { data, error } = await supabaseAdmin.from("admins").select("*");
+        const { data, error } = await supabase.from("admins").select("*");
 
         if (error) {
             console.error("Supabase error fetching admins:", error);
@@ -123,7 +116,7 @@ export async function POST(req: NextRequest) {
           }
 
         // Cek apakah email sudah ada (untuk mencegah duplikasi)
-        const { count: existingAdminCount, error: checkError } = await supabaseAdmin
+        const { count: existingAdminCount, error: checkError } = await supabase
             .from("admins")
             .select("id", { count: 'exact' })
             .eq("email", email.toLowerCase());
@@ -153,7 +146,7 @@ export async function POST(req: NextRequest) {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Tambahkan admin ke database menggunakan service_role key
-        const { data, error } = await supabaseAdmin.from("admins").insert([
+        const { data, error } = await supabase.from("admins").insert([
             {
                 username,
                 email: email.toLowerCase(), // Simpan email dalam huruf kecil

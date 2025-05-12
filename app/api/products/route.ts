@@ -2,43 +2,56 @@ import { NextRequest } from "next/server"
 import supabase from "@/utils/supabase/client";
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const trending = searchParams.get('trending') === 'true';
-    const category = searchParams.get('category');
-    
-    // Buat query untuk produk
-    let query = supabase.from("products").select("*");
-    
-    // Tambahkan filter jika ada
-    if (category) {
-      query = query.eq('category_id', category);
-    }
-    
-    // Jika diminta produk trending, ambil berdasarkan views (jika ada) atau sort lain
-    if (trending) {
-      // Untuk implementasi sederhana, kita sort berdasarkan ID
-      // Idealnya gunakan field seperti views_count, likes_count, dll.
-      query = query.order('id', { ascending: false });
-    } else {
-      // Default sort: terbaru duluan
-      query = query.order('created_at', { ascending: false });
-    }
-    
-    // Batasi jumlah produk yang diambil
-    query = query.limit(limit);
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500 });
-    }
-    
-    return Response.json(data);
-  } catch (error: any) {
-    return Response.json({ error: error.message }, { status: 500 });
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+  const includeVariants = searchParams.get('include_variants') === 'true';
+  
+  let query = supabase
+    .from("products")
+    .select("*, category:categories(name)");
+  
+  if (category) {
+    query = query.eq("category_id", category);
   }
+  
+  const { data, error } = await query;
+  
+  if (error) return Response.json({ error }, { status: 500 });
+
+  // If variants are requested, fetch them for each product
+  if (includeVariants && data && data.length > 0) {
+    const productIds = data.map(product => product.id);
+    
+    const { data: variants, error: variantsError } = await supabase
+      .from("product_variants")
+      .select(`
+        *,
+        sizes:variant_sizes(
+          id,
+          size_id,
+          size:sizes(id, name)
+        )
+      `)
+      .in("product_id", productIds);
+    
+    if (variantsError) return Response.json({ error: variantsError }, { status: 500 });
+    
+    // Group variants by product_id
+    const variantsByProduct = variants.reduce((acc, variant) => {
+      if (!acc[variant.product_id]) {
+        acc[variant.product_id] = [];
+      }
+      acc[variant.product_id].push(variant);
+      return acc;
+    }, {});
+    
+    // Add variants to each product
+    data.forEach(product => {
+      product.variants = variantsByProduct[product.id] || [];
+    });
+  }
+  
+  return Response.json(data);
 }
 
 export async function POST(request: { formData: () => any; }) {
