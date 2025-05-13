@@ -1,3 +1,4 @@
+"use client"
 import { useEffect, useState } from 'react';
 import NavbarAdmin from '@/components/NavbarAdmin';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
