@@ -28,8 +28,9 @@ export default function AdminVariantTypes() {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Failed to fetch variant types');
+    } catch (error) {
+      console.error("Network or parsing error:", error)
+      setVariantTypes([])
     } finally {
       setLoading(false);
     }
@@ -61,8 +62,8 @@ export default function AdminVariantTypes() {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Failed to add variant type');
+    } catch (error) {
+      console.error("Network or parsing error:", error)
     } finally {
       setLoading(false);
     }
@@ -90,8 +91,8 @@ export default function AdminVariantTypes() {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Failed to update variant type');
+    } catch (error) {
+      console.error("Network or parsing error:", error)
     } finally {
       setLoading(false);
     }
@@ -115,8 +116,8 @@ export default function AdminVariantTypes() {
       } else {
         setError(data.error);
       }
-    } catch (err) {
-      setError('Failed to delete variant type');
+    } catch (error) {
+      console.error("Network or parsing error:", error)
     } finally {
       setLoading(false);
     }

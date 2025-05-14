@@ -20,15 +20,24 @@ interface Admin {
   created_at: string;
 }
 
+interface FormData {
+  username: string;
+  email: string;
+  password: string;
+  image: File | null;
+  existingImage: string;
+  is_superadmin: boolean;
+}
+
 export default function AdminAdmins() {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<Admin | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     username: "",
     email: "",
     password: "",
-    image: null as File | null,
+    image: null,
     existingImage: "",
     is_superadmin: false,
   });
@@ -62,7 +71,8 @@ export default function AdminAdmins() {
         }
         setIsCurrentAdminSuperadmin(true);
         fetchAdmins(); // Fetch admins only if superadmin
-      } catch (err) {
+      } catch (error: unknown) {
+        const err = error as Error;
         console.error("Error checking superadmin status:", err);
         router.push("/admin/dashboard"); // Redirect on error
       }
@@ -92,7 +102,8 @@ export default function AdminAdmins() {
         setAdmins([]);
         setError("Format data admin tidak sesuai.");
       }
-    } catch (err) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error("Network or parsing error while fetching admins:", err);
       setError("Terjadi kesalahan jaringan atau parsing.");
       setAdmins([]);
@@ -100,26 +111,30 @@ export default function AdminAdmins() {
       setIsLoading(false);
     }
   };
-
-  const handleInputChange = (e: any) => {
-    const { name, value, files, type, checked } = e.target;
+  // @typescript-eslint/no-explicit-any
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value, type } = e.target;
+    const target = e.target as HTMLInputElement;
+    
     setFormData((prev) => ({
       ...prev,
       [name]:
         type === "file"
-          ? files?.[0] || null
+          ? target.files?.[0] || null
           : type === "checkbox"
-          ? checked
+          ? target.checked
           : value,
       existingImage: name === "image" ? prev.existingImage : prev.existingImage,
     }));
-    // Clear validation error for the current field if any
+
     if (error && error.includes(name)) {
-        setError(null);
+      setError(null);
     }
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null); // Clear previous errors
 
@@ -180,9 +195,10 @@ export default function AdminAdmins() {
          // Handle API errors (e.g., email already exists)
          setError(result.error || `Gagal ${editingAdmin ? "mengupdate" : "menambah"} admin. Status: ${res.status}`);
       }
-    } catch (err: any) {
-       console.error("Submission error:", err);
-       setError(`Terjadi kesalahan: ${err.message}`);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Submission error:", err);
+      setError(`Terjadi kesalahan: ${err.message}`);
     }
   };
 
@@ -227,7 +243,8 @@ export default function AdminAdmins() {
               const result = await res.json();
               setError(result.error || `Gagal menghapus admin. Status: ${res.status}`);
           }
-      } catch (err: any) {
+      } catch (error: unknown) {
+          const err = error as Error;
           console.error("Deletion error:", err);
           setError(`Terjadi kesalahan saat menghapus: ${err.message}`);
       }
@@ -469,13 +486,14 @@ export default function AdminAdmins() {
                 {formData.existingImage && (
                   <div className="mt-2">
                     <p className="text-xs text-gray-500 mb-1">Gambar saat ini:</p>
-                    {/* Use img tag instead of Image component for external URLs without next.config.js config */}
-                    {/* If you have configured image domains in next.config.js, you can use Image */}
-                    <img
-                       src={formData.existingImage}
-                       alt="Current admin image"
-                       className="h-16 w-16 object-cover rounded-full border"
-                    />
+                    <div className="relative h-16 w-16">
+                      <Image
+                        src={formData.existingImage}
+                        alt="Current admin image"
+                        fill
+                        className="object-cover rounded-full border"
+                      />
+                    </div>
                   </div>
                 )}
               </div>

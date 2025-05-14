@@ -170,13 +170,21 @@ export async function PUT(
          // );
      }
 
-    const updateData: { [key: string]: any } = {};
+    interface UpdateData {
+      username?: string;
+      email?: string;
+      password_hash?: string;
+      is_superadmin?: boolean;
+      image_url?: string | null;
+    }
+
+    const updateData: UpdateData = {};
     if (username !== null && username !== undefined) updateData.username = username;
     if (email !== null && email !== undefined) updateData.email = email.toLowerCase(); // Simpan dalam huruf kecil
 
     // Handle password update only if a new password is provided
     if (password !== undefined && password.length > 0) {
-        updateData.password = await bcrypt.hash(password, 10);
+        updateData.password_hash = await bcrypt.hash(password, 10);
     }
 
      // Handle is_superadmin update if it's in the form data

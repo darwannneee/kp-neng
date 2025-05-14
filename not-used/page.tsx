@@ -61,14 +61,13 @@ const ProductDetail = () => {
   const { id } = router.query;
 
   const [selectedColor, setSelectedColor] = useState('METAL/GREEN');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const product = productsData.find((p) => p.id === id);
 
   if (!product) {
     return <div>Product not found</div>;
   }
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const handlePrevImage = () => {
     setCurrentImageIndex((prevIndex) =>
@@ -252,5 +251,40 @@ const Accordion = ({ title, content }: { title: string; content: string }) => {
     </div>
   );
 };
+
+// Create a component that always uses the hook regardless of conditions
+function ConditionalImageSection({ product }: { product: any }) {
+  const [zoomed, setZoomed] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  if (!product?.image_url) {
+    return <div className="w-full h-64 bg-gray-200 flex items-center justify-center">No Image</div>;
+  }
+
+  return (
+    <div
+      className="relative overflow-hidden"
+      onMouseEnter={() => setZoomed(true)}
+      onMouseLeave={() => setZoomed(false)}
+      onMouseMove={(e) => {
+        const { left, top, width, height } = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - left) / width;
+        const y = (e.clientY - top) / height;
+        setPosition({ x, y });
+      }}
+    >
+      <Image
+        src={product.image_url}
+        alt={product.name}
+        width={500}
+        height={500}
+        className={`w-full transition-transform duration-200 ${zoomed ? 'scale-150' : 'scale-100'}`}
+        style={{
+          transformOrigin: `${position.x * 100}% ${position.y * 100}%`,
+        }}
+      />
+    </div>
+  );
+}
 
 export default ProductDetail;

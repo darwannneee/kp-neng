@@ -35,6 +35,11 @@ interface DashboardStats {
   showAdminCount?: boolean;
 }
 
+interface ApiError {
+  error: string;
+  message?: string;
+}
+
 export default function AdminDashboard() {
   // Mengelola state admin yang sedang login
   const [admin, setAdmin] = useState<Admin | null>(null);
@@ -85,7 +90,8 @@ export default function AdminDashboard() {
         setAdmin(data); // Set state admin
         return data; // Kembalikan data admin yang berhasil diambil
 
-      } catch (err) {
+      } catch (error: unknown) {
+        const err = error as Error;
         console.error("Error fetching logged in admin status:", err);
         setStatsError("Gagal memuat status admin."); // Set pesan error UI
         return null;
@@ -117,7 +123,7 @@ export default function AdminDashboard() {
 
         // Cek jika response dari API tidak OK
         if (!statsRes.ok) {
-          const errorData = await statsRes.json(); // Ambil error message dari response API
+          const errorData = await statsRes.json() as ApiError;
           console.error("Failed to fetch stats:", statsRes.status, errorData);
           setStatsError(errorData.error || "Gagal memuat statistik."); // Set error message dari API atau default
           
@@ -125,7 +131,7 @@ export default function AdminDashboard() {
           if (statsRes.status === 403 && !currentAdmin.is_superadmin) {
             console.log("Admin is not a superadmin, admin count is likely excluded by API.");
             setStatsError(null); // Hapus error umum jika issue hanya terkait adminCount hidden
-            setStats({...stats, adminCount: null}); // Pastikan adminCount null di state
+            setStats(prevStats => ({...prevStats, adminCount: null})); // Pastikan adminCount null di state
           }
 
           // Return agar tidak melanjutkan ke setStats di bawah jika fetch gagal total
@@ -136,13 +142,15 @@ export default function AdminDashboard() {
         const statsData = await statsRes.json();
         
         // Set data from API
-        setStats({
+        setStats(prevStats => ({
+          ...prevStats,
           productCount: statsData.productCount,
           categoryCount: statsData.categoryCount,
           adminCount: statsData.adminCount,
-        });
+        }));
 
-      } catch (err: any) {
+      } catch (error: unknown) {
+        const err = error as Error;
         // Tangani error jaringan atau parsing
         console.error("Network or parsing error fetching stats:", err);
         setStatsError(`Terjadi kesalahan jaringan: ${err.message}`); // Set error message jaringan

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import supabase from "@/utils/supabase/client";
 import Image from "next/image";
@@ -8,15 +8,18 @@ import Link from "next/link";
 import Logo from "@/public/img/Logo Ecoute.png";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faHouse, 
-  faBox, 
-  faTag, 
-  faUsers, 
-  faRightFromBracket, 
-  faBars,
-  faChartPie,
-  faGear
+  faBars, 
+  faChartPie, 
+  faGear,
+  faSignOutAlt,
+  faUsers,
+  faBox,
+  faTag,
+  faTachometerAlt,
+  faLayerGroup,
+  faRuler
 } from '@fortawesome/free-solid-svg-icons';
+import { Lora } from 'next/font/google';
 
 interface Admin {
   id: string;
@@ -212,7 +215,7 @@ export default function NavbarAdmin() {
               className="flex w-full items-center gap-3 px-4 py-3 text-sm rounded-lg text-red-600 hover:bg-red-50 transition-colors"
             >
               <div className="w-8 h-8 flex items-center justify-center rounded-md bg-red-100 text-red-600">
-                <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                <FontAwesomeIcon icon={faSignOutAlt} className="w-4 h-4" />
               </div>
               <span className="font-medium">Logout</span>
             </button>

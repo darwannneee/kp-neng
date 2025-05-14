@@ -30,6 +30,11 @@ interface Category {
   };
 }
 
+interface ApiError {
+  error: string;
+  message?: string;
+}
+
 export default function AdminCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
@@ -43,12 +48,6 @@ export default function AdminCategories() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const router = useRouter();
-
-  // Helper to get auth headers (basic example, REMOVE IN PRODUCTION unless properly secured)
-  const getAuthHeaders = () => {
-    const adminId = localStorage.getItem("adminId");
-    return adminId ? { 'x-admin-id': adminId } : {};
-  };
 
   useEffect(() => {
     // Basic check for authentication before fetching
@@ -89,35 +88,33 @@ export default function AdminCategories() {
     setIsLoading(true);
     setError(null);
     try {
-      // Panggil API route untuk fetch kategori
-      const res = await fetch("/api/admin/categories?include=admin", {
-        // headers: getAuthHeaders(), // API doesn't have validation
-      });
+      const res = await fetch("/api/admin/categories?include=admin");
 
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json() as ApiError;
         console.error("Failed to fetch categories from API:", res.status, errorData);
         setError(errorData.error || "Gagal mengambil data kategori.");
         setCategories([]);
         setFilteredCategories([]);
-        return
+        return;
       }
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (Array.isArray(data)) {
-        setCategories(data)
-        setFilteredCategories(data)
+        setCategories(data);
+        setFilteredCategories(data);
       } else {
-        console.error("Expected array but got:", data)
-        setCategories([])
-        setFilteredCategories([])
+        console.error("Expected array but got:", data);
+        setCategories([]);
+        setFilteredCategories([]);
         setError("Format data kategori tidak sesuai dari API.");
       }
-    } catch (err) {
-      console.error("Network or parsing error while fetching categories from API:", err)
-      setCategories([])
-      setFilteredCategories([])
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Network or parsing error while fetching categories from API:", err);
+      setCategories([]);
+      setFilteredCategories([]);
       setError("Terjadi kesalahan jaringan atau parsing API.");
     } finally {
       setIsLoading(false);
@@ -138,7 +135,7 @@ export default function AdminCategories() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null);
 
     if (!formData.name.trim()) {
       setError("Nama kategori wajib diisi.");
@@ -153,7 +150,7 @@ export default function AdminCategories() {
 
     const dataToSend = {
       name: formData.name.trim(),
-      admin_id: adminId, // Add admin_id to the request
+      admin_id: adminId,
     };
 
     const method = editingCategory ? "PUT" : "POST";
@@ -166,24 +163,24 @@ export default function AdminCategories() {
         method,
         headers: {
           'Content-Type': 'application/json',
-          // ...getAuthHeaders(), // API doesn't have validation
         },
         body: JSON.stringify(dataToSend),
       });
 
-      const result = await res.json();
+      const result = await res.json() as ApiError;
 
       if (res.ok) {
-        fetchCategories(); // Refresh the list by calling fetchCategories API
+        fetchCategories();
         setIsModalOpen(false);
         setFormData({
           name: "",
         });
-        setEditingCategory(null); // Clear editing state
+        setEditingCategory(null);
       } else {
         setError(result.error || `Gagal ${editingCategory ? "mengupdate" : "menambah"} kategori. Status: ${res.status}`);
       }
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error("Submission error to API:", err);
       setError(`Terjadi kesalahan: ${err.message}`);
     }
@@ -195,26 +192,26 @@ export default function AdminCategories() {
       name: category.name,
     });
     setIsModalOpen(true);
-    setError(null); // Clear error when opening modal
+    setError(null);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("Hapus kategori ini? Menghapus kategori akan menghapus semua produk yang terkait dengan kategori ini.")) {
-      setError(null); // Clear previous errors
+      setError(null);
       try {
         const url = `/api/admin/categories/${id}`;
         const res = await fetch(url, {
           method: "DELETE",
-          // headers: getAuthHeaders(), // API doesn't have validation
         });
 
         if (res.ok) {
-          fetchCategories(); // Refresh the list by calling fetchCategories API
+          fetchCategories();
         } else {
-          const result = await res.json();
+          const result = await res.json() as ApiError;
           setError(result.error || `Gagal menghapus kategori. Status: ${res.status}`);
         }
-      } catch (err: any) {
+      } catch (error: unknown) {
+        const err = error as Error;
         console.error("Deletion error to API:", err);
         setError(`Terjadi kesalahan saat menghapus: ${err.message}`);
       }

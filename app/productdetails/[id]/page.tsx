@@ -31,85 +31,59 @@ interface Variant {
 }
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
-  price: string;
   description: string;
+  price: string;
   image_url: string;
   category_id: string;
   admin_id: string;
-  category?: {
-    name: string;
-  };
-  admin?: {
-    username: string;
-    id: string;
-    image_url?: string;
-  };
-  variants?: Variant[];
 }
 
-export default function ProductDetails({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+export default function ProductDetail({ params }: { params: { id: string } }) {
   const [product, setProduct] = useState<Product | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedSize, setSelectedSize] = useState<Size | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchProduct();
-  }, [resolvedParams.id]);
-
-  useEffect(() => {
-    if (product) {
-      console.log('Product data loaded:', {
-        id: product.id,
-        name: product.name,
-        mainImage: product.image_url,
-        variantsCount: product.variants?.length || 0,
-        variants: product.variants?.map(v => ({
-          id: v.id,
-          name: v.name,
-          hasImage: !!v.image_url,
-          image: v.image_url
-        }))
-      });
-      
-      // Always set the main product image on load
-      setCurrentImage(product.image_url || null);
-      
-      // Don't auto-select any variant
-      // Log variant info for debugging
-      if (product.variants && product.variants.length > 0) {
-        console.log('Found variants:', product.variants.length);
-        product.variants.forEach((variant, index) => {
-          console.log(`Variant ${index + 1}:`, {
-            id: variant.id,
-            name: variant.name,
-            hasImage: !!variant.image_url,
-            imageUrl: variant.image_url
-          });
-        });
-      }
-    }
-  }, [product]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchProduct = async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch(`/api/products/${resolvedParams.id}`);
+      // Fetch product
+      const res = await fetch(`/api/products/${params.id}`);
       if (!res.ok) {
-        throw new Error("Failed to fetch product");
+        throw new Error('Failed to fetch product');
       }
-      const data = await res.json();
-      setProduct(data);
+      const productData = await res.json();
+      setProduct(productData);
+      setCurrentImage(productData.image_url);
+
+      // Fetch variants
+      const variantsRes = await fetch(`/api/products/${params.id}/variants`);
+      if (variantsRes.ok) {
+        const variantsData = await variantsRes.json();
+        setVariants(variantsData);
+      }
     } catch (error) {
-      console.error("Error fetching product:", error);
+      console.error('Error fetching product:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProduct();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]);
+
+  useEffect(() => {
+    if (variants.length > 0 && !selectedVariant) {
+      setSelectedVariant(variants[0]);
+    }
+  }, [variants, selectedVariant]);
 
   const handleVariantSelect = (variant: Variant) => {
     console.log('Variant selected:', {
@@ -123,7 +97,7 @@ export default function ProductDetails({ params }: { params: Promise<{ id: strin
     setSelectedVariant(variant);
     
     // Reset size selection
-    setSelectedSize("");
+    setSelectedSize(null);
     
     // Force rerender with a new image by creating a temporary variable
     const newImage = variant.image_url || product?.image_url || null;
@@ -138,24 +112,6 @@ export default function ProductDetails({ params }: { params: Promise<{ id: strin
     }, 100);
   };
   
-  // Function to handle hover on variant for Shopee-like preview
-  const handleVariantHover = (variant: Variant) => {
-    // Preview the variant image on hover
-    if (variant.image_url) {
-      setCurrentImage(variant.image_url);
-    }
-  };
-  
-  // Function to reset image when mouse leaves variant (if not selected)
-  const handleVariantLeave = () => {
-    // Only reset if there's a selected variant
-    if (selectedVariant) {
-      setCurrentImage(selectedVariant.image_url || product?.image_url || null);
-    } else {
-      setCurrentImage(product?.image_url || null);
-    }
-  };
-
   const getAvailableSizes = () => {
     if (!selectedVariant) return [];
     return selectedVariant.sizes.map(size => ({
@@ -209,11 +165,11 @@ export default function ProductDetails({ params }: { params: Promise<{ id: strin
             </p>
 
             {/* Simple Variant Selection Row - Shopee Style */}
-            {product.variants && product.variants.length > 0 && (
+            {variants.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium mb-2">Variants</h3>
                 <div className="flex flex-wrap gap-2">
-                  {product.variants.map((variant) => (
+                  {variants.map((variant) => (
                     <button
                       key={variant.id}
                       onClick={() => handleVariantSelect(variant)}
@@ -257,10 +213,10 @@ export default function ProductDetails({ params }: { params: Promise<{ id: strin
                   {getAvailableSizes().map((size) => (
                     <button
                       key={size.id}
-                      onClick={() => setSelectedSize(size.id)}
+                      onClick={() => setSelectedSize(size)}
                       disabled={size.stock === 0}
                       className={`py-2 text-sm border rounded-md ${
-                        selectedSize === size.id
+                        selectedSize?.id === size.id
                           ? 'border-black bg-black text-white'
                           : size.stock === 0
                           ? 'border-gray-200 text-gray-300 cursor-not-allowed'
@@ -320,10 +276,10 @@ export default function ProductDetails({ params }: { params: Promise<{ id: strin
                 <h3 className="font-medium mb-2">Product Details</h3>
                 <p className="text-gray-600">{product.description}</p>
               </div>
-              {product.category && (
+              {product.category_id && (
                 <div className="border-t pt-4">
                   <h3 className="font-medium mb-2">Category</h3>
-                  <p className="text-gray-600">{product.category.name}</p>
+                  <p className="text-gray-600">{product.category_id}</p>
                 </div>
               )}
               {selectedVariant && (

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSuperadmin } from "@/app/api/admin/validateSuperadmin";
+// import { validateSuperadmin } from "@/app/api/admin/validateSuperadmin";
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
+// import { v4 as uuidv4 } from 'uuid';
 import supabase from "@/utils/supabase/client";
 
 // Helper function to upload image - menggunakan pola yang sama dengan produk

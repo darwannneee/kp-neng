@@ -29,8 +29,9 @@ export default function AdminSizes() {
       } else {
         setError(data.error || 'Failed to fetch sizes');
       }
-    } catch (err) {
-      setError('Failed to fetch sizes');
+    } catch (error) {
+      console.error("Network or parsing error:", error)
+      setSizes([])
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,8 @@ export default function AdminSizes() {
       } else {
         setError(data.error || 'Failed to add size');
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Network or parsing error:", error)
       setError('Failed to add size');
     } finally {
       setLoading(false);
@@ -92,7 +94,8 @@ export default function AdminSizes() {
       } else {
         setError(data.error || 'Failed to update size');
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Network or parsing error:", error)
       setError('Failed to update size');
     } finally {
       setLoading(false);
@@ -117,7 +120,8 @@ export default function AdminSizes() {
       } else {
         setError(data.error || 'Failed to delete size');
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Network or parsing error:", error)
       setError('Failed to delete size');
     } finally {
       setLoading(false);

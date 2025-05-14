@@ -31,7 +31,7 @@ export default function Navbar() {
         };
     }, []);
 
-    const handleSearch = (e: any) => {
+    const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (searchQuery.trim()) {
             window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
@@ -62,7 +62,7 @@ export default function Navbar() {
                 </div>
                 <div className="flex justify-center items-center">
                     <Link href="/">
-                        <img src={Logo.src} className="w-16" alt="Logo Ecoute" />
+                        <Image src={Logo} alt="Logo Ecoute" width={64} height={24} className="w-16" />
                     </Link>
                 </div>
                 <div className="flex justify-end items-center gap-3">

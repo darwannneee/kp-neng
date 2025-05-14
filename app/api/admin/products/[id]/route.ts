@@ -401,8 +401,13 @@ export async function PUT(
   }
 }
 
-// Helper function to update variant sizes
-async function updateVariantSizes(variantId: string, sizes: any[]) {
+interface VariantSize {
+  id?: string;
+  variant_id: string;
+  size_id: string;
+}
+
+async function updateVariantSizes(variantId: string, sizes: VariantSize[]) {
   if (!Array.isArray(sizes) || sizes.length === 0) {
     console.log(`No sizes to process for variant ${variantId}`);
     return;
@@ -475,13 +480,27 @@ async function updateVariantSizes(variantId: string, sizes: any[]) {
 }
 
 export async function DELETE(
-  _: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     // Await the params to properly access its properties
     const { id } = await context.params;
-    console.log('Processing delete for product ID:', id);
+    
+    // No need to extract adminId if not using it
+    // const adminId = request.headers.get("x-admin-id");
+    
+    // Check if product exists
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (productError) {
+      console.error('Error fetching product:', productError);
+      return Response.json({ error: productError.message }, { status: 500 });
+    }
     
     // Get all variants for this product
     const { data: variants, error: getVariantsError } = await supabase

@@ -3,8 +3,13 @@
 import { useEffect, useState } from 'react';
 import NavbarAdmin from '@/components/NavbarAdmin';
 
+interface Size {
+  id: string;
+  name: string;
+}
+
 export default function AdminVariantSizes() {
-  const [sizes, setSizes] = useState<{ id: string; name: string }[]>([]);
+  const [sizes, setSizes] = useState<Size[]>([]);
   const [newSize, setNewSize] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +23,9 @@ export default function AdminVariantSizes() {
       const data = await res.json();
       if (res.ok) setSizes(data);
       else setError(data.error || 'Gagal memuat data ukuran');
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -29,7 +35,7 @@ export default function AdminVariantSizes() {
     fetchSizes();
   }, []);
 
-  const handleAdd = async (e: any) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -49,8 +55,9 @@ export default function AdminVariantSizes() {
       } else {
         setError(data.error || 'Gagal menambah ukuran');
       }
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -74,8 +81,9 @@ export default function AdminVariantSizes() {
       } else {
         setError(data.error || 'Gagal menghapus ukuran');
       }
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      const err = error as Error;
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -91,7 +99,7 @@ export default function AdminVariantSizes() {
             <input
               type="text"
               value={newSize}
-              onChange={e => setNewSize(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewSize(e.target.value)}
               placeholder="Nama ukuran (misal: S, M, L, XL)"
               className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
               disabled={loading}

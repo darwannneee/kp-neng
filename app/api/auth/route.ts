@@ -1,8 +1,14 @@
+// import { NextRequest } from "next/server"
 import { NextRequest } from "next/server"
 import supabase from "@/utils/supabase/client"
 
-export async function POST(request: { json: () => PromiseLike<{ email: any; password: any }> | { email: any; password: any } }) {
-  const { email, password } = await request.json()
+interface AuthCredentials {
+  email: string;
+  password: string;
+}
+
+export async function POST(request: NextRequest) {
+  const { email, password } = await request.json() as AuthCredentials
   
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

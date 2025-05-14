@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Lora, Montserrat } from "next/font/google"
+import { Lora } from "next/font/google"
 import NavbarAdmin from "@/components/NavbarAdmin"
 import Image from "next/image"
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
@@ -12,15 +12,10 @@ import {
   faTrash, 
   faSearch
 } from '@fortawesome/free-solid-svg-icons'
-import { VariantType, VariantOption, VariantCombination } from '@/utils/types'
+import { VariantType, VariantOption } from '@/utils/types'
 import React from "react"
 
 const LoraFontBold = Lora({
-  weight: '400',
-  subsets: ['latin']
-})
-
-const MonsterratFont = Montserrat({
   weight: '400',
   subsets: ['latin']
 })
@@ -50,10 +45,16 @@ interface VariantSize {
   // stock field removed as it's not needed
 }
 
-interface Variant {
+type FormInputElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+interface FormData {
   name: string;
+  price: string;
+  description: string;
   image: File | null;
-  sizes: VariantSize[];
+  existingImage: string;
+  admin_id: string;
+  category_id: string;
 }
 
 interface VariantFormData {
@@ -62,7 +63,9 @@ interface VariantFormData {
   image: File | null;
   image_url?: string | null;
   sizes: VariantSize[];
-  [key: string]: any; // Allow dynamic fields for form handling
+  price?: string;
+  stock?: string;
+  optionIds?: string[];
 }
 
 export default function AdminProducts() {
@@ -71,7 +74,7 @@ export default function AdminProducts() {
   const [categories, setCategories] = useState<Categories[]>([])
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     price: "",
     description: "",
@@ -85,10 +88,6 @@ export default function AdminProducts() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [variantTypes, setVariantTypes] = useState<VariantType[]>([]);
-  const [selectedVariantTypes, setSelectedVariantTypes] = useState<string[]>([]);
-  const [variantOptions, setVariantOptions] = useState<{ [typeId: string]: VariantOption[] }>({});
-  const [variantCombinations, setVariantCombinations] = useState<VariantCombination[]>([]);
   const [sizes, setSizes] = useState<{ id: string; name: string }[]>([]);
   const [variants, setVariants] = useState<VariantFormData[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -99,7 +98,6 @@ export default function AdminProducts() {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-    fetchVariantTypes();
     fetchSizes();
 
     // Add scroll event listener for header animation
@@ -186,29 +184,6 @@ export default function AdminProducts() {
     }
   }
 
-  const fetchVariantTypes = async () => {
-    try {
-      const res = await fetch('/api/variant-types')
-
-      if(!res.ok) {
-        console.error("Failed to fetch variant types", res.status)
-      }
-
-      const data = await res.json()
-
-      if(Array.isArray(data)) {
-        console.log("Fetched variant types:", data);
-        setVariantTypes(data)
-      } else {
-        console.error("Expected array but got:", data)
-        setVariantTypes([])
-      }
-    } catch(err) {
-      console.error("Network or parsing error:", err)
-      setVariantTypes([])
-    }
-  }
-
   const fetchSizes = async () => {
     try {
       const res = await fetch('/api/variant-sizes')
@@ -231,26 +206,28 @@ export default function AdminProducts() {
   }
 
   // Handle input changes
-  const handleInputChange = (e: any) => {
-    const { name, value, files } = e.target;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const target = e.target;
     
-    if (name === "image" && files && files[0]) {
+    if (target instanceof HTMLInputElement && target.type === "file") {
+      const files = target.files;
+      if (files && files[0]) {
         const file = files[0];
-        setFormData((prev) => ({
-            ...prev,
-            [name]: file,
-            existingImage: prev.existingImage,
+        setFormData(prev => ({
+          ...prev,
+          image: file,
+          existingImage: prev.existingImage,
         }));
         
         // Create preview URL for the new image
         const previewUrl = URL.createObjectURL(file);
         setImagePreview(previewUrl);
+      }
     } else {
-        setFormData((prev) => ({
-            ...prev,
-            [name]: files ? files[0] : value,
-            existingImage: name === "image" ? prev.existingImage : prev.existingImage,
-        }));
+      setFormData(prev => ({
+        ...prev,
+        [target.name]: target.value
+      }));
     }
   };
 
@@ -264,7 +241,7 @@ export default function AdminProducts() {
   }, [imagePreview]);
 
   // Handle form submission
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
 
@@ -427,7 +404,7 @@ export default function AdminProducts() {
           name: variant.name,
           image: null,
           image_url: variant.image_url,
-          sizes: Array.isArray(variant.sizes) ? variant.sizes.map((sizeData: any) => ({
+          sizes: Array.isArray(variant.sizes) ? variant.sizes.map((sizeData: { id: string; size_id: string }) => ({
             id: sizeData.id,
             size_id: sizeData.size_id
           })) : []
@@ -445,7 +422,7 @@ export default function AdminProducts() {
   };
 
   // Handle product deletion
-  const handleDelete = async (id: any) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Hapus produk ini?")) {
       const res = await fetch(`/api/admin/products/${id}`, {
         method: "DELETE"
@@ -465,106 +442,6 @@ export default function AdminProducts() {
   // Helper to generate cartesian product of options
   function cartesianProduct<T>(arrays: T[][]): T[][] {
     return arrays.reduce<T[][]>((a, b) => a.flatMap(d => b.map(e => [ ...d, e ])), [[]]);
-  }
-
-  interface VariantCombinationsTableProps {
-    selectedVariantTypes: string[];
-    variantTypes: VariantType[];
-    variantOptions: { [typeId: string]: VariantOption[] };
-    variantCombinations: any[];
-    setVariantCombinations: (v: any[]) => void;
-  }
-
-  function VariantCombinationsTable({
-    selectedVariantTypes,
-    variantTypes,
-    variantOptions,
-    variantCombinations,
-    setVariantCombinations
-  }: VariantCombinationsTableProps) {
-    // Build all possible combinations
-    const optionArrays = selectedVariantTypes.map(typeId => variantOptions[typeId] || []);
-    const allCombinations = cartesianProduct(optionArrays).filter((c: VariantOption[]) => c.length === selectedVariantTypes.length);
-
-    // Helper to get combination key
-    const getKey = (combo: VariantOption[]) => combo.map(o => o.name).join(' | ');
-
-    // Helper to get option IDs for a combination key
-    const comboOptionIds = (key: string) => {
-      const names = key.split(' | ');
-      const found = allCombinations.find((c: VariantOption[]) => getKey(c) === key);
-      return found ? found.map((o: VariantOption) => o.id) : [];
-    };
-
-    // Update a field in a combination
-    const updateCombination = (key: string, field: string, value: any) => {
-      const idx = variantCombinations.findIndex((c: any) => c.key === key);
-      if (idx !== -1) {
-        const updated = [ ...variantCombinations ];
-        updated[idx] = { ...updated[idx], [field]: value };
-        setVariantCombinations(updated);
-      } else {
-        setVariantCombinations([
-          ...variantCombinations,
-          { key, price: '', stock: '', image: null, selectedOptions: comboOptionIds(key), [field]: value }
-        ]);
-      }
-    };
-
-    // Ensure state is in sync with all combinations
-    React.useEffect(() => {
-      const keys = allCombinations.map(getKey);
-      // Remove combinations that no longer exist
-      let filtered = variantCombinations.filter((c: any) => keys.includes(c.key));
-      // Add missing combinations
-      keys.forEach(key => {
-        if (!filtered.find((c: any) => c.key === key)) {
-          filtered.push({ key, price: '', stock: '', image: null, selectedOptions: comboOptionIds(key) });
-        }
-      });
-      setVariantCombinations(filtered);
-      // eslint-disable-next-line
-    }, [JSON.stringify(allCombinations)]);
-
-    return (
-      <table className="min-w-full border text-sm">
-        <thead>
-          <tr>
-            {selectedVariantTypes.map(typeId => (
-              <th key={typeId} className="border px-2 py-1">{variantTypes.find(t => t.id === typeId)?.name}</th>
-            ))}
-            <th className="border px-2 py-1">Harga</th>
-            <th className="border px-2 py-1">Stok</th>
-            <th className="border px-2 py-1">Gambar</th>
-          </tr>
-        </thead>
-        <tbody>
-          {allCombinations.map((combo: VariantOption[], idx: number) => {
-            const key = getKey(combo);
-            const row = variantCombinations.find((c: any) => c.key === key) || { price: '', stock: '', image: null };
-            return (
-              <tr key={key}>
-                {combo.map((opt: VariantOption, i: number) => (
-                  <td key={i} className="border px-2 py-1">{opt.name}</td>
-                ))}
-                <td className="border px-2 py-1">
-                  <input type="text" value={row.price} onChange={e => updateCombination(key, 'price', e.target.value)} className="w-20 border rounded px-1" />
-                </td>
-                <td className="border px-2 py-1">
-                  <input type="number" value={row.stock} onChange={e => updateCombination(key, 'stock', e.target.value)} className="w-16 border rounded px-1" />
-                </td>
-                <td className="border px-2 py-1">
-                  <input type="file" accept="image/*" onChange={e => updateCombination(key, 'image', e.target.files?.[0] || null)} />
-                  {row.image && typeof row.image === 'string' && (
-                    <img src={row.image} alt="variant" className="w-10 h-10 object-cover mt-1" />
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    );
   }
 
   return (
@@ -711,7 +588,7 @@ export default function AdminProducts() {
                           <FontAwesomeIcon icon={faPenToSquare} />
                         </button>
                         <button
-                          onClick={() => handleDelete(product.id)}
+                          onClick={() => handleDelete(product.id.toString())}
                           className="text-red-600 hover:text-red-700"
                         >
                           <FontAwesomeIcon icon={faTrash} />
@@ -966,7 +843,7 @@ function VariantList({ variants, setVariants, sizes }: {
         URL.revokeObjectURL(url);
       });
     };
-  }, [variants]);
+  }, [variants, imagePreviewUrls]);
 
   const handleAdd = () => setVariants([
     ...variants, 
@@ -991,7 +868,7 @@ function VariantList({ variants, setVariants, sizes }: {
     setVariants(variants.filter((_, i) => i !== idx));
   };
 
-  const handleChange = (idx: number, field: string, value: any) => {
+  const handleChange = (idx: number, field: string, value: string | File | null) => {
     const newVariants = [...variants];
     newVariants[idx] = { ...newVariants[idx], [field]: value };
     

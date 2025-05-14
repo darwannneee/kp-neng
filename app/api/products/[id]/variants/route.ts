@@ -1,6 +1,23 @@
 import { NextRequest } from "next/server";
 import supabase from "@/utils/supabase/client";
 
+interface VariantResponse {
+  id: string;
+  name: string;
+  product_id: string;
+  image_url: string | null;
+  stock: number;
+  sizes: {
+    id: string;
+    size_id: string;
+    variant_id: string;
+    size: {
+      id: string;
+      name: string;
+    };
+  }[];
+}
+
 // Mendapatkan informasi varian dan kombinasi untuk produk tertentu
 export async function GET(
   request: NextRequest,
@@ -71,7 +88,19 @@ export async function GET(
   
   // Error handling already done above for variantError
   
-  return Response.json(data);
+  if (!data) {
+    return Response.json({ error: 'No data found' }, { status: 404 });
+  }
+  
+  // Process data and return results
+  const processedVariants: VariantResponse[] = data.map((variant: VariantResponse) => ({
+    ...variant,
+  }));
+  
+  return new Response(JSON.stringify(processedVariants), {
+    headers: { 'Content-Type': 'application/json' },
+    status: 200
+  });
 }
 
 // Menetapkan tipe varian untuk produk

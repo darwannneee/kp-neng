@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Lora, Lacquer, Montserrat } from "next/font/google";
 import Footer from "@/components/Footer";
 import { useState } from "react";
+import Link from "next/link";
 
 // Import fonts
 const LoraFontBold = Lora({
@@ -75,8 +76,8 @@ export default function ProductDetail() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-10">
         {/* Breadcrumb */}
         <div className="text-sm text-gray-500 mb-6">
-          <a href="/" className="hover:underline">Home</a> / 
-          <a href="/products" className="hover:underline"> Products</a> / 
+          <Link href="/" className="hover:underline">Home</Link> / 
+          <Link href="/products" className="hover:underline"> Products</Link> / 
           <span className="text-gray-900"> {product.name}</span>
         </div>
 

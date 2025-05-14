@@ -5,7 +5,7 @@ import supabase from "@/utils/supabase/client";
 
 
 // GET: Ambil semua kategori dari Supabase (via API publik)
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         // Fetch data kategori dari Supabase
         const { data, error } = await supabase.from("categories").select("*").order('name', { ascending: true });

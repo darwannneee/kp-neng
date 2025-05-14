@@ -3,14 +3,17 @@ import Image from 'next/image';
 import InstagramIcon from '@/public/img/instagram.png';
 import Link from 'next/link';
 
+// Define the section type
+type FooterSection = 'about' | 'help' | 'contact';
+
 export default function EnhancedFooter() {
   // State for accordion functionality on mobile
-  const [openSection, setOpenSection] = useState(null);
+  const [openSection, setOpenSection] = useState<FooterSection | null>(null);
   // State to track if viewport is mobile size
   const [isMobile, setIsMobile] = useState(false);
   
   // Toggle section visibility for mobile accordion
-  const toggleSection = (section: any) => {
+  const toggleSection = (section: FooterSection) => {
     setOpenSection(openSection === section ? null : section);
   };
 

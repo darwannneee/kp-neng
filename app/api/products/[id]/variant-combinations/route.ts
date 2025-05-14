@@ -70,7 +70,7 @@ export async function POST(
       if (!Array.isArray(selectedOptions) || selectedOptions.length === 0) {
         throw new Error("Format opsi varian tidak valid");
       }
-    } catch (e) {
+    } catch (error) {
       return Response.json({ 
         error: "Format opsi varian tidak valid" 
       }, { status: 400 });

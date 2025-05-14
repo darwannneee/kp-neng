@@ -1,7 +1,7 @@
 "use client"
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
-import { Lora, Lacquer, Montserrat } from "next/font/google";
+import { Lora, Montserrat } from "next/font/google";
 import Footer from "@/components/Footer";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,10 +11,6 @@ import { VariantSize } from "@/utils/types";
 
 const LoraFontBold = Lora({
   weight: '500',
-  subsets: ['latin']
-});
-const LacquerFont = Lacquer({
-  weight: '400',
   subsets: ['latin']
 });
 const MontserratFont = Montserrat({
@@ -37,13 +33,11 @@ interface Product {
   };
 }
 
-interface VariantFormData {
+interface FormData {
   name: string;
-  price: string | null;
-  stock: number;
-  image: File | null;
-  sizes: VariantSize[];
-  [key: string]: any; // Allow dynamic fields for form handling
+  email: string;
+  subject: string;
+  message: string;
 }
 
 // --- Define Product Data ---
@@ -130,8 +124,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [hoveredSide, setHoveredSide] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -371,8 +364,8 @@ export default function Home() {
         {/* Left image */}
         <div 
           className="w-full md:w-1/2 relative group cursor-pointer overflow-hidden"
-          onMouseEnter={() => setHoveredSide('left')}
-          onMouseLeave={() => setHoveredSide(null)}
+          onMouseEnter={() => setHoveredItem(1)}
+          onMouseLeave={() => setHoveredItem(null)}
         >
           <div 
             className="h-[300px] md:h-[500px] lg:h-[600px] bg-cover bg-center transition-transform duration-700 ease-in-out group-hover:scale-105"
@@ -392,8 +385,8 @@ export default function Home() {
         {/* Right image */}
         <div 
           className="w-full md:w-1/2 relative group cursor-pointer overflow-hidden"
-          onMouseEnter={() => setHoveredSide('right')}
-          onMouseLeave={() => setHoveredSide(null)}
+          onMouseEnter={() => setHoveredItem(2)}
+          onMouseLeave={() => setHoveredItem(null)}
         >
           <div 
             className="h-[300px] md:h-[500px] lg:h-[600px] bg-cover bg-center transition-transform duration-700 ease-in-out group-hover:scale-105"

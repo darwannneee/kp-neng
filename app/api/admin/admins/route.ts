@@ -61,30 +61,52 @@ const deleteImage = async (imageUrl: string | null) => {
 
 
 // GET: Ambil semua admin
-export async function GET(req: NextRequest) {
-    // Middleware ini bisa dipanggil di sini atau di middleware Next.js global
-    const validation = await validateSuperadmin(req);
-    if (validation) return validation; // Return response if not authorized
-
-    try {
-        const { data, error } = await supabase.from("admins").select("*");
-
-        if (error) {
-            console.error("Supabase error fetching admins:", error);
-            return NextResponse.json(
-                { error: error.message || "Gagal mengambil data admin" },
-                { status: 500 }
-            );
-        }
-
-        return NextResponse.json(data);
-    } catch (err) {
-        console.error("API error fetching admins:", err);
-        return NextResponse.json(
-            { error: "Terjadi kesalahan server" },
-            { status: 500 }
-        );
+export async function GET(request: NextRequest) {
+  try {
+    // Verify the session
+    // const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    
+    // if (sessionError || !sessionData.session) {
+    //   return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
+    
+    // const adminId = request.headers.get('x-admin-id');
+    const adminId = request.headers.get('x-admin-id');
+    
+    if (!adminId) {
+      return Response.json({ error: 'No admin ID provided' }, { status: 401 });
     }
+    
+    // Check if the requesting admin exists and is a superadmin
+    const { data: requestingAdmin, error: adminError } = await supabase
+      .from('admins')
+      .select('is_superadmin')
+      .eq('id', adminId)
+      .single();
+      
+    if (adminError || !requestingAdmin) {
+      return Response.json({ error: 'Admin not found' }, { status: 404 });
+    }
+    
+    if (!requestingAdmin.is_superadmin) {
+      return Response.json({ error: 'Access denied' }, { status: 403 });
+    }
+    
+    // Fetch all admins
+    const { data: admins, error } = await supabase
+      .from('admins')
+      .select('id, username, email, is_superadmin, created_at');
+      
+    if (error) {
+      console.error('Error fetching admins:', error);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+    
+    return Response.json(admins);
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }
 
 // POST: Tambah admin baru

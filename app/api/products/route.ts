@@ -1,6 +1,36 @@
 import { NextRequest } from "next/server"
 import supabase from "@/utils/supabase/client";
 
+interface ProductSize {
+  id: string;
+  name: string;
+}
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  image_url: string | null;
+  sizes: ProductSize[];
+}
+
+interface ProductWithVariants {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  image_url: string;
+  category_id: string;
+  category?: {
+    id: string;
+    name: string;
+  };
+  variants?: ProductVariant[];
+}
+
+interface FormDataRequest {
+  formData: () => Promise<FormData>;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -17,6 +47,8 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
   
   if (error) return Response.json({ error }, { status: 500 });
+
+  let formattedProducts: ProductWithVariants[] = [];
 
   // If variants are requested, fetch them for each product
   if (includeVariants && data && data.length > 0) {
@@ -37,24 +69,35 @@ export async function GET(request: NextRequest) {
     if (variantsError) return Response.json({ error: variantsError }, { status: 500 });
     
     // Group variants by product_id
-    const variantsByProduct = variants.reduce((acc, variant) => {
-      if (!acc[variant.product_id]) {
-        acc[variant.product_id] = [];
+    const variantsByProduct: { [key: string]: ProductVariant[] } = {};
+    variants.forEach(variant => {
+      if (!variantsByProduct[variant.product_id]) {
+        variantsByProduct[variant.product_id] = [];
       }
-      acc[variant.product_id].push(variant);
-      return acc;
-    }, {});
+      variantsByProduct[variant.product_id].push({
+        id: variant.id,
+        name: variant.name,
+        image_url: variant.image_url,
+        sizes: []
+      });
+    });
     
     // Add variants to each product
-    data.forEach(product => {
-      product.variants = variantsByProduct[product.id] || [];
-    });
+    formattedProducts = data.map((product) => ({
+      ...product,
+      variants: variantsByProduct[product.id] || [],
+    }));
+  } else if (data) {
+    formattedProducts = data.map((product) => ({
+      ...product,
+      variants: [],
+    }));
   }
   
-  return Response.json(data);
+  return Response.json(formattedProducts);
 }
 
-export async function POST(request: { formData: () => any; }) {
+export async function POST(request: NextRequest) {
   const formData = await request.formData();
   
   const name = formData.get("name") as string;
