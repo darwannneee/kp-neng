@@ -296,45 +296,51 @@ export default function Home() {
         </div>
       ) : (
         <div 
-          ref={scrollContainer}
-          className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
-          style={{ scrollBehavior: 'smooth', cursor: isDragging ? 'grabbing' : 'grab'}}
-          onScroll={handleScrollUpdate}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleDragEnd}
-          onMouseLeave={handleDragEnd}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleDragEnd}
-        >
-          {products.map((product) => (
-            <div 
-              key={product.id} 
-              className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-2 snap-start cursor-pointer"
-              onClick={() => router.push(`/productdetails/${product.id}`)}
-            >
-              <div className="group relative">
-                <div className="w-full overflow-hidden bg-gray-200 lg:aspect-none group-hover:opacity-75 h-[420px] relative">
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="mt-4 flex flex-col text-sm">
-                  <h3 className="text-gray-700 font-medium">
-                    <span aria-hidden="true" className="absolute inset-0" />
-                    {product.name}
-                  </h3>
-                  <p className="text-gray-500 mt-1">{product.description}</p>
-                  <p className="font-medium text-gray-900 mt-1">Rp {product.price}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+  ref={scrollContainer}
+  className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar gap-x-6"
+  style={{ scrollBehavior: 'smooth', cursor: isDragging ? 'grabbing' : 'grab'}}
+  onScroll={handleScrollUpdate}
+  onMouseDown={handleMouseDown}
+  onMouseMove={handleMouseMove}
+  onMouseUp={handleDragEnd}
+  onMouseLeave={handleDragEnd}
+  onTouchStart={handleTouchStart}
+  onTouchMove={handleTouchMove}
+  onTouchEnd={handleDragEnd}
+>
+  {products.map((product) => (
+    <div 
+      key={product.id} 
+      className="flex-none w-full sm:w-1/2 md:w-1/3 lg:w-1/4 px-2 snap-start cursor-pointer"
+      onClick={() => router.push(`/productdetails/${product.id}`)}
+    >
+      <div className="group relative">
+        <div className="w-full overflow-hidden bg-gray-200 lg:aspect-none group-hover:opacity-75 h-[420px] relative">
+          <Image
+            src={product.image_url}
+            alt={product.name}
+            fill
+            className="h-full w-full object-cover"
+          />
         </div>
+        <div className="mt-4 flex flex-col h-[100px] justify-between">
+          <h3 className="text-gray-700 font-bold text-md truncate w-full">
+            <span aria-hidden="true" className="absolute inset-0" />
+            {product.name}
+          </h3>
+          <div className="flex flex-col">
+            <p className="text-gray-500 line-clamp-2 overflow-hidden break-words text-xs">
+              {product.description}
+            </p>
+            <p className="font-medium text-gray-900 text-sm pt-2">
+              Rp {product.price}
+            </p>
+          </div> 
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
       )}
       
       {/* Mobile indicator */}

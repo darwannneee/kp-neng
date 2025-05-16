@@ -178,6 +178,27 @@ export default function NavbarAdmin() {
               <span className="font-medium">Categories</span>
             </Link>
 
+            <div className="px-4 py-2 mt-4 text-xs font-semibold uppercase text-gray-500">Product Variants</div>
+            <Link
+              href="/admin/variant-sizes"
+              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            >
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-amber-100 text-amber-600">
+                <FontAwesomeIcon icon={faRuler} className="w-4 h-4" />
+              </div>
+              <span className="font-medium">Sizes</span>
+            </Link>
+            
+            <Link
+              href="/admin/variant-types"
+              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            >
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-teal-100 text-teal-600">
+                <FontAwesomeIcon icon={faLayerGroup} className="w-4 h-4" />
+              </div>
+              <span className="font-medium">Variant Types</span>
+            </Link>
+
             {/* Admin section only if superadmin */}
             {admin.is_superadmin && (
               <div>

@@ -563,22 +563,22 @@ export default function AdminProducts() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
               {filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                  <div className="relative h-48">
+                <div key={product.id} className="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+                  <div className="relative pt-[150%]"> {/* This creates a 2:3 aspect ratio container */}
                     <Image
                       src={product.image_url}
                       alt={product.name}
                       fill
-                      className="object-cover"
+                      className="object-contain p-2"
                     />
                   </div>
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-2">
                       <div>
-                        <h3 className="text-lg font-medium">{product.name}</h3>
-                        <p className="text-sm text-gray-500">{getCategoryName(product.category_id)}</p>
+                        <h3 className="text-base font-medium">{product.name}</h3>
+                        <p className="text-xs text-gray-500">{getCategoryName(product.category_id)}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -595,9 +595,9 @@ export default function AdminProducts() {
                         </button>
                       </div>
                     </div>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
+                    <p className="text-gray-600 mb-2 text-sm line-clamp-2">{product.description}</p>
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-blue-600">Rp {product.price}</span>
+                      <span className="text-sm font-semibold text-blue-600">Rp {product.price}</span>
                     </div>
                   </div>
                 </div>
@@ -837,13 +837,16 @@ function VariantList({ variants, setVariants, sizes }: {
     
     setImagePreviewUrls(previewUrls);
     
+    // Store current URLs to clean up in the closure
+    const currentUrls = {...previewUrls};
+    
     // Cleanup function to revoke object URLs
     return () => {
-      Object.values(imagePreviewUrls).forEach(url => {
+      Object.values(currentUrls).forEach(url => {
         URL.revokeObjectURL(url);
       });
     };
-  }, [variants, imagePreviewUrls]);
+  }, [variants]);
 
   const handleAdd = () => setVariants([
     ...variants, 
