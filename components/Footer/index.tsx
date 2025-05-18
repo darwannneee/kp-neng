@@ -147,39 +147,19 @@ export default function EnhancedFooter() {
                 {['instagram'].map((social) => (
                   <a 
                     key={social}
-                    href="#" 
+                    href={social === 'instagram' ? 'https://instagram.com/ecoute_id' : 'https://tiktok.com/@ecoute_id'}
                     className="text-gray-400 hover:text-gray-800 transition-colors duration-200"
                     aria-label={`Ikuti kami di ${social}`}
                   >
-                    {social === 'instagram' ? (
-                      <div className="w-6 h-6 relative">
-                        <Image 
-                          src={InstagramIcon} 
-                          alt="Instagram"
-                          layout="fill"
-                          objectFit="contain"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 flex items-center justify-center rounded-full border border-gray-400 hover:border-gray-800">
-                        <span className="text-xs font-medium">{social.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
+                    <div className="w-6 h-6 relative">
+                      <Image 
+                        src={InstagramIcon.src}
+                        alt={social.charAt(0).toUpperCase() + social.slice(1)}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
                   </a>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Payment methods */}
-          <div className="mt-6 flex justify-center md:justify-start">
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500">Kami menerima:</span>
-              <div className="flex space-x-2">
-                {['Visa', 'Mastercard', 'BCA', 'Mandiri'].map((payment) => (
-                  <div key={payment} className="text-xs font-medium text-gray-600 border border-gray-300 rounded px-2 py-1">
-                    {payment}
-                  </div>
                 ))}
               </div>
             </div>

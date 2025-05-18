@@ -11,11 +11,18 @@ const LoraFont = Lora({
     subsets: ['latin']
 })
 
+interface Category {
+    id: string;
+    name: string;
+}
+
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -29,6 +36,29 @@ export default function Navbar() {
         return () => {
             window.removeEventListener("scroll", handleScroll);
         };
+    }, []);
+
+    useEffect(() => {
+        // Fetch categories from API
+        const fetchCategories = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch('/api/admin/categories');
+                if (!res.ok) {
+                    throw new Error('Failed to fetch categories');
+                }
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    setCategories(data);
+                }
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        fetchCategories();
     }, []);
 
     const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
@@ -51,12 +81,25 @@ export default function Navbar() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
-                    <div className={`sm:block ${isMenuOpen ? 'block' : 'hidden'} absolute sm:relative w-full sm:w-auto`}>
-                        <ul className="flex flex-col sm:flex-row gap-y-2 sm:gap-x-5 text-sm">
-                            <li className="hover:underline"><Link href="/products?category=pria">Pria</Link></li>
-                            <li className="hover:underline"><Link href="/products?category=wanita">Wanita</Link></li>
-                            <li className="hover:underline"><Link href="/products?category=anak">Anak</Link></li>
-                            <li className="hover:underline"><Link href="/products?sale=true">Diskon</Link></li>
+                    <div className={`sm:flex ${isMenuOpen ? 'block' : 'hidden'} absolute sm:relative top-12 left-0 sm:top-0 bg-white sm:bg-transparent w-full sm:w-auto shadow-md sm:shadow-none z-50`}>
+                        <ul className="flex flex-col sm:flex-row gap-y-2 sm:gap-x-8 text-sm p-3 sm:p-0">
+                            {isLoading ? (
+                                <li className="text-gray-400">Loading...</li>
+                            ) : categories.length > 0 ? (
+                                categories.map(category => (
+                                    <li key={category.id} className="hover:underline">
+                                        <Link href={`/products?category=${category.id}`}>
+                                            {category.name.charAt(0).toUpperCase() + category.name.slice(1).toLowerCase()}
+                                        </Link>
+                                    </li>
+                                ))
+                            ) : (
+                                <>
+                                    <li className="hover:underline"><Link href="/products?category=pria">Pria</Link></li>
+                                    <li className="hover:underline"><Link href="/products?category=wanita">Wanita</Link></li>
+                                    <li className="hover:underline"><Link href="/products?category=anak">Anak</Link></li>
+                                </>
+                            )}
                         </ul>
                     </div>
                 </div>

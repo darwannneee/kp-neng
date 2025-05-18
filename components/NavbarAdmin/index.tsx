@@ -17,7 +17,8 @@ import {
   faTag,
   faTachometerAlt,
   faLayerGroup,
-  faRuler
+  faRuler,
+  faImages
 } from '@fortawesome/free-solid-svg-icons';
 import { Lora } from 'next/font/google';
 
@@ -197,6 +198,16 @@ export default function NavbarAdmin() {
                 <FontAwesomeIcon icon={faLayerGroup} className="w-4 h-4" />
               </div>
               <span className="font-medium">Variant Types</span>
+            </Link>
+
+            <Link
+              href="/admin/banners"
+              className="flex items-center gap-3 px-4 py-3 text-sm rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            >
+              <div className="w-8 h-8 flex items-center justify-center rounded-md bg-pink-100 text-pink-600">
+                <FontAwesomeIcon icon={faImages} className="w-4 h-4" />
+              </div>
+              <span className="font-medium">Banners</span>
             </Link>
 
             {/* Admin section only if superadmin */}

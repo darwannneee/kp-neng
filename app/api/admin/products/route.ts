@@ -96,6 +96,19 @@ export async function POST(request: NextRequest) {
     const variantCombinations = JSON.parse(formData.get("variantCombinations") as string || "[]");
     const variants = JSON.parse(formData.get("variants") as string || "[]");
     
+    // Get variant images from form data
+    const variantImages: { [key: number]: File } = {};
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith('variantImage_') && value instanceof File && value.size > 0) {
+        const index = parseInt(key.split('_')[1]);
+        variantImages[index] = value;
+        console.log(`Found variant image for index ${index}:`, {
+          fileName: value.name,
+          fileSize: value.size
+        });
+      }
+    }
+    
     console.log('Received form data:', {
       name,
       price,
@@ -171,17 +184,20 @@ export async function POST(request: NextRequest) {
     if (variants && variants.length > 0) {
       console.log('Processing variants:', variants);
       
-      for (const variant of variants) {
+      for (let variantIndex = 0; variantIndex < variants.length; variantIndex++) {
+        const variant = variants[variantIndex];
         try {
           // Upload variant image if provided
           let variantImageUrl = null;
-          if (variant.image instanceof File) {
+          const variantImage = variantImages[variantIndex];
+          
+          if (variantImage) {
             console.log('Uploading variant image...');
-            const variantFileName = `${Date.now()}-${variant.image.name}`;
+            const variantFileName = `${Date.now()}-${variantImage.name}`;
             const { error: variantUploadError } = await supabase.storage
               .from("ecoute")
-              .upload(`variants/${variantFileName}`, variant.image, { 
-                contentType: variant.image.type 
+              .upload(`variants/${variantFileName}`, variantImage, { 
+                contentType: variantImage.type 
               });
             
             if (variantUploadError) {
@@ -203,9 +219,7 @@ export async function POST(request: NextRequest) {
             .insert({
               product_id: data.id,
               name: variant.name,
-              price: variant.price || null,
-              stock: variant.stock || 0,
-              image_url: variantImageUrl
+              image_url: variantImageUrl || variant.image_url
             })
             .select()
             .single();
@@ -220,10 +234,9 @@ export async function POST(request: NextRequest) {
           // Add sizes for this variant if provided
           if (variant.sizes && variant.sizes.length > 0) {
             console.log('Adding sizes for variant:', variant.sizes);
-            const sizesToInsert = variant.sizes.map((size: { size_id: string; stock: number }) => ({
+            const sizesToInsert = variant.sizes.map((size: { size_id: string }) => ({
               variant_id: variantData.id,
-              size_id: size.size_id,
-              stock: size.stock || 0
+              size_id: size.size_id
             }));
             
             const { error: sizesError } = await supabase

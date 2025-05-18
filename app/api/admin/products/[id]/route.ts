@@ -22,7 +22,7 @@ export async function PUT(
     const categoryId = formData.get("category_id") as string;
     const adminId = formData.get("admin_id") as string;
     const existingImage = formData.get("existingImage") as string;
-    const variantsJson = formData.get("variants") as string;
+    const variantsJson = formData.get("variants") as string | null;
     const variants = variantsJson ? JSON.parse(variantsJson) : [];
     
     // Periksa dan log semua field dalam formData untuk debugging
@@ -37,32 +37,18 @@ export async function PUT(
       }
     }
     
-    // Mengumpulkan file gambar varian dari FormData
-    const variantImages: Record<number, File> = {};
-    console.log('DEBUG: Checking for variant images in formData...');
+    // Get variant images from form data
+    const variantImages: { [key: number]: File } = {};
     for (const [key, value] of formData.entries()) {
-      console.log(`DEBUG: Form data entry - key: ${key}, type: ${typeof value}, isFile: ${value instanceof File}`);
-      if (key.startsWith('variantImage_')) {
-        console.log(`DEBUG: Found variantImage_ key: ${key}`);
-        if (value instanceof File) {
-          console.log(`DEBUG: Value is a File object with size: ${value.size}, name: ${value.name}`);
-          if (value.size > 0) {
-            const index = parseInt(key.split('_')[1]);
-            variantImages[index] = value;
-            console.log(`Found variant image for index ${index}:`, {
-              fileName: value.name,
-              fileSize: value.size,
-              fileType: value.type
-            });
-          } else {
-            console.log(`DEBUG: Skipping empty file with size 0 for key: ${key}`);
-          }
-        } else {
-          console.log(`DEBUG: Value is NOT a File object for key: ${key}, it's a: ${typeof value}`);
-        }
+      if (key.startsWith('variantImage_') && value instanceof File && value.size > 0) {
+        const index = parseInt(key.split('_')[1]);
+        variantImages[index] = value;
+        console.log(`Found variant image for index ${index}:`, {
+          fileName: value.name,
+          fileSize: value.size
+        });
       }
     }
-    console.log('DEBUG: Found variant images:', Object.keys(variantImages).length);
     
     const image = formData.get("image") as File | null;
 
@@ -156,7 +142,8 @@ export async function PUT(
         if (Array.isArray(variants) && variants.length > 0) {
           console.log('DEBUG: variantImages available:', Object.keys(variantImages));
           // Process each variant sequentially to avoid race conditions
-          for (const variant of variants) {
+          for (let variantIndex = 0; variantIndex < variants.length; variantIndex++) {
+            const variant = variants[variantIndex];
             try {
               if (variant.id) {
                 // Update existing variant
@@ -165,46 +152,32 @@ export async function PUT(
                 
                 // Handle variant image update if provided
                 let variantImageUrl = variant.image_url;
-                
-                // Find the variant index in the variants array
-                const variantIndex = variants.findIndex(v => v.id === variant.id);
-                console.log(`Checking for image updates for variant ${variant.name} at index ${variantIndex}`);
-                
-                // Check if we have an image for this variant in the variantImages map
                 const variantImage = variantImages[variantIndex];
-                if (variantImage && variantImage.size > 0) {
-                  // Sanitize variant name for file path
-                  const sanitizedVariantName = variant.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                  console.log(`Uploading new image for existing variant ${variant.name}:`, {
+                
+                if (variantImage) {
+                  console.log('Uploading image for existing variant:', {
                     fileName: variantImage.name,
                     fileSize: variantImage.size,
                     fileType: variantImage.type
                   });
                   
-                  const variantFileName = `${productFolderPath}/variant_${sanitizedVariantName}_${Date.now()}-${variantImage.name}`;
-                  console.log('Variant image target path:', variantFileName);
+                  const sanitizedVariantName = variant.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                  const variantFileName = `${Date.now()}-${sanitizedVariantName}-${variantImage.name}`;
                   
-                  try {
-                    const { error: variantUploadError } = await supabase.storage
-                      .from("ecoute")
-                      .upload(variantFileName, variantImage, { 
-                        contentType: variantImage.type,
-                        cacheControl: '3600'
-                      });
+                  const { error: variantUploadError } = await supabase.storage
+                    .from("ecoute")
+                    .upload(`variants/${variantFileName}`, variantImage, { 
+                      contentType: variantImage.type 
+                    });
                     
-                    if (variantUploadError) {
-                      console.error(`Error uploading image for variant ${variant.name}:`, variantUploadError);
-                    } else {
-                      variantImageUrl = supabase.storage
-                        .from("ecoute")
-                        .getPublicUrl(variantFileName).data.publicUrl;
-                      console.log(`New image for variant ${variant.name} uploaded:`, variantImageUrl);
-                    }
-                  } catch (uploadError) {
-                    console.error(`Unexpected error during variant image upload for ${variant.name}:`, uploadError);
+                  if (variantUploadError) {
+                    console.error("Error uploading variant image:", variantUploadError);
+                  } else {
+                    variantImageUrl = supabase.storage
+                      .from("ecoute")
+                      .getPublicUrl(`variants/${variantFileName}`).data.publicUrl;
+                    console.log('Variant image uploaded:', variantImageUrl);
                   }
-                } else {
-                  console.log(`No new image provided for existing variant: ${variant.name}`);
                 }
                 
                 // Update variant data
@@ -212,7 +185,6 @@ export async function PUT(
                   .from("product_variants")
                   .update({
                     name: variant.name,
-                    // price and stock fields have been removed from the database schema
                     image_url: variantImageUrl
                   })
                   .eq("id", variant.id);
@@ -229,77 +201,35 @@ export async function PUT(
                 // Add new variant
                 console.log(`Adding new variant: ${variant.name}`);
                 
-                // Cari file gambar untuk varian berdasarkan indeks
+                // Handle variant image upload
                 let variantImageUrl = null;
-                const variantIndex = variants.findIndex(v => v.name === variant.name);
-                console.log(`DEBUG: Looking for variant image at index ${variantIndex} for variant ${variant.name}`);
-                console.log(`DEBUG: Available variantImages keys:`, Object.keys(variantImages));
                 const variantImage = variantImages[variantIndex];
                 
-                console.log(`Processing variant image for new variant: ${variant.name}`, {
-                  variantIndex,
-                  hasImage: !!variantImage,
-                  imageType: variantImage?.type || 'No image',
-                  imageSize: variantImage?.size || 0,
-                  allKeys: Object.keys(variantImages)
-                });
-                
-                if (variantImage && variantImage.size > 0) {
-                  console.log(`DEBUG: Will attempt to upload variant image:`, {
-                    name: variantImage.name,
-                    type: variantImage.type,
-                    size: variantImage.size
+                if (variantImage) {
+                  console.log('Uploading image for new variant:', {
+                    fileName: variantImage.name,
+                    fileSize: variantImage.size,
+                    fileType: variantImage.type
                   });
-                  // Sanitize variant name for file path
+                  
                   const sanitizedVariantName = variant.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                  console.log(`Uploading image for new variant ${variant.name}`, {
-                    fileName: variant.image.name,
-                    fileSize: variant.image.size,
-                    fileType: variant.image.type,
-                    fileLastModified: variant.image.lastModified
-                  });
+                  const variantFileName = `${Date.now()}-${sanitizedVariantName}-${variantImage.name}`;
                   
-                  const variantFileName = `${productFolderPath}/variant_${sanitizedVariantName}_${Date.now()}-${variant.image.name}`;
-                  console.log('Variant image target path:', variantFileName);
-                  
-                  try {
-                    // This is important - we need to log the actual content of the file
-                    console.log('Uploading file with content type:', variantImage.type);
+                  const { error: variantUploadError } = await supabase.storage
+                    .from("ecoute")
+                    .upload(`variants/${variantFileName}`, variantImage, { 
+                      contentType: variantImage.type 
+                    });
                     
-                    const { error: variantUploadError, data: uploadData } = await supabase.storage
+                  if (variantUploadError) {
+                    console.error("Error uploading variant image:", variantUploadError);
+                  } else {
+                    variantImageUrl = supabase.storage
                       .from("ecoute")
-                      .upload(variantFileName, variantImage, { 
-                        contentType: variantImage.type,
-                        cacheControl: '3600'
-                      });
-                    
-                    if (variantUploadError) {
-                      console.error(`Error uploading image for new variant ${variant.name}:`, variantUploadError);
-                    } else {
-                      console.log('Upload successful. Upload data:', uploadData);
-                      
-                      const publicUrlResult = supabase.storage
-                        .from("ecoute")
-                        .getPublicUrl(variantFileName);
-                        
-                      console.log('Public URL result:', publicUrlResult);
-                      variantImageUrl = publicUrlResult.data.publicUrl;
-                      console.log(`Image for new variant ${variant.name} uploaded. Final URL:`, variantImageUrl);
-                    }
-                  } catch (uploadError) {
-                    console.error(`Unexpected error during variant image upload for ${variant.name}:`, uploadError);
-                    console.error('Error details:', uploadError);
+                      .getPublicUrl(`variants/${variantFileName}`).data.publicUrl;
+                    console.log('Variant image uploaded:', variantImageUrl);
                   }
-                } else {
-                  console.log(`No image provided for variant: ${variant.name}`);
                 }
-                
-                // Insert new variant
-                console.log('Adding new variant with data:', {
-                  product_id: id,
-                  name: variant.name,
-                  image_url: variantImageUrl
-                });
                 
                 const { data: newVariant, error: insertError } = await supabase
                   .from("product_variants")
