@@ -41,6 +41,10 @@ interface Product {
 }
 
 export default function ProductDetail({ params }: { params: { id: string } }) {
+  // Properly unwrap params with React.use() as recommended by Next.js 14+
+  // We need to cast the unwrapped params to maintain TypeScript type safety
+  const unwrappedParams = use(params as unknown as Promise<{ id: string }>);
+  const id = unwrappedParams.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
@@ -53,7 +57,7 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
     setIsLoading(true);
     try {
       // Fetch product
-      const res = await fetch(`/api/products/${params.id}`);
+      const res = await fetch(`/api/products/${id}`);
       if (!res.ok) {
         throw new Error('Failed to fetch product');
       }
@@ -62,7 +66,7 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
       setCurrentImage(productData.image_url);
 
       // Fetch variants
-      const variantsRes = await fetch(`/api/products/${params.id}/variants`);
+      const variantsRes = await fetch(`/api/products/${id}/variants`);
       if (variantsRes.ok) {
         const variantsData = await variantsRes.json();
         setVariants(variantsData);
@@ -77,7 +81,7 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
   useEffect(() => {
     fetchProduct();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => {
     if (variants.length > 0 && !selectedVariant) {
@@ -114,11 +118,18 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
   
   const getAvailableSizes = () => {
     if (!selectedVariant) return [];
-    return selectedVariant.sizes.map(size => ({
-      id: size.size.id,
-      name: size.size.name,
-      stock: size.stock
-    }));
+    if (!selectedVariant.sizes) return []; // Handle case where sizes is undefined
+    return selectedVariant.sizes.map(size => {
+      // Add safety check for size.size which might be undefined
+      if (!size.size) {
+        return { id: 'unknown', name: 'Unknown', stock: size.stock || 0 };
+      }
+      return {
+        id: size.size.id,
+        name: size.size.name,
+        stock: size.stock
+      };
+    });
   };
 
   if (isLoading) {
@@ -206,7 +217,7 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
             )}
 
             {/* Size Selection */}
-            {selectedVariant && getAvailableSizes().length > 0 && (
+            {selectedVariant && getAvailableSizes() && getAvailableSizes().length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium mb-2">Size</h3>
                 <div className="grid grid-cols-5 gap-2">
@@ -256,15 +267,15 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
             {/* Add to Cart Button */}
             <button 
               className={`w-full py-4 rounded-full transition duration-200 ${
-                (!selectedVariant || (selectedVariant.sizes.length > 0 && !selectedSize))
+                (!selectedVariant || (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize))
                 ? 'bg-gray-300 cursor-not-allowed'
                 : 'bg-black text-white hover:bg-gray-900'
               }`}
-              disabled={!selectedVariant || (selectedVariant.sizes.length > 0 && !selectedSize)}
+              disabled={!selectedVariant || (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize)}
             >
               {!selectedVariant 
                 ? 'Please select a variant'
-                : selectedVariant.sizes.length > 0 && !selectedSize
+                : (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize)
                 ? 'Please select a size'
                 : 'Add to Cart'
               }
