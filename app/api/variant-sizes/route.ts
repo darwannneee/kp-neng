@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   return Response.json({
     id: data.id,
-    name: data.size
+    name: data.size_id
   });
 }
 
@@ -66,27 +66,44 @@ export async function PUT(request: NextRequest) {
 
   return Response.json({
     id: data.id,
-    name: data.size
+    name: data.size_id
   });
 }
 
 // Delete a size
 export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
+  try {
+    console.log('DELETE request received');
+    
+    // Get ID from request body
+    const { id } = await request.json();
+    console.log('Extracted ID from body:', id);
 
-  if (!id) {
-    return Response.json({ error: 'ID is required' }, { status: 400 });
+    if (!id) {
+      console.log('No ID provided in request body');
+      return Response.json({ error: 'ID is required' }, { status: 400 });
+    }
+
+    // Log the ID for debugging
+    console.log('Attempting to delete size with ID:', id);
+
+    const { error } = await supabase
+      .from('variant_sizes')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting size:', error);
+      return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    console.log('Size deleted successfully');
+    return Response.json({ success: true });
+  } catch (error) {
+    console.error('Error in DELETE handler:', error);
+    return Response.json({ 
+      error: 'Internal server error', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 });
   }
-
-  const { error } = await supabase
-    .from('variant_sizes')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
-  }
-
-  return Response.json({ success: true });
 } 

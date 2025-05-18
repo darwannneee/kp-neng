@@ -75,7 +75,7 @@ export default function AdminSizes() {
   // Update size
   const handleUpdateSize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSize || !editingSize.name.trim()) return;
+    if (!editingSize || !editingSize.name.trim() || !editingSize.id) return;
 
     setLoading(true);
     setError(null);
@@ -83,7 +83,10 @@ export default function AdminSizes() {
       const res = await fetch('/api/variant-sizes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingSize.id, name: editingSize.name.trim() })
+        body: JSON.stringify({ 
+          id: String(editingSize.id), 
+          name: editingSize.name.trim() 
+        })
       });
       const data = await res.json();
       
@@ -104,15 +107,28 @@ export default function AdminSizes() {
 
   // Delete size
   const handleDeleteSize = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this size?')) return;
+    if (!id || !confirm('Are you sure you want to delete this size?')) return;
 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/variant-sizes?id=${id}`, {
-        method: 'DELETE'
+      // Debug log
+      console.log('Attempting to delete size with ID:', id);
+      
+      // Send ID in request body instead of URL params
+      const res = await fetch('/api/variant-sizes', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id })
       });
+      
+      // Debug log
+      console.log('Response status:', res.status);
+      
       const data = await res.json();
+      console.log('Response data:', data);
       
       if (res.ok) {
         setSuccess('Size deleted successfully');
