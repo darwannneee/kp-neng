@@ -58,21 +58,23 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-  // Fetch categories
+  // Fetch categories function
+  const fetchCategories = async () => {
+    setIsLoadingCategories(true);
+    try {
+      const res = await fetch("/api/admin/categories");
+      if (!res.ok) throw new Error("Failed to fetch categories");
+      const data = await res.json();
+      if (Array.isArray(data)) setCategories(data);
+    } catch (err) {
+      setCategories([]);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
+  // Load categories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoadingCategories(true);
-      try {
-        const res = await fetch("/api/admin/categories");
-        if (!res.ok) throw new Error("Failed to fetch categories");
-        const data = await res.json();
-        if (Array.isArray(data)) setCategories(data);
-      } catch (err) {
-        setCategories([]);
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
     fetchCategories();
   }, []);
 
