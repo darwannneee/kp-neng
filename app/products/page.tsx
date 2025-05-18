@@ -103,10 +103,6 @@ export default function ProductsPage() {
     setCategory(value);
   };
 
-  // Effect to fetch categories
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   return (
     <main className={`${MontserratFont.className} min-h-screen`}>
