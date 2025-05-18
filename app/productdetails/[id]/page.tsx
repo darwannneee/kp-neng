@@ -132,6 +132,37 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
     });
   };
 
+  // When adding new sizes, use this function to ensure admin authentication
+  const addNewSize = async (sizeName) => {
+    try {
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        console.error("Admin authentication required");
+        return null;
+      }
+
+      const res = await fetch('/api/variant-sizes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-id': adminId // Include admin ID in header
+        },
+        body: JSON.stringify({ name: sizeName })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error('Failed to add size:', errorData.error);
+        return null;
+      }
+
+      return await res.json();
+    } catch (error) {
+      console.error('Error adding size:', error);
+      return null;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

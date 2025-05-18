@@ -23,19 +23,19 @@ const MontserratFont = Montserrat({
 // Contoh data produk (ambil dari newProducts)
 const product = {
   id: 1,
-  name: 'Ruffle Maxi Dress',
+  name: 'Gaun Maxi Ruffle',
   colours: 2,
-  price: '$179',
+  price: 'Rp 2.500.000',
   image: 'https://rvfvqtugsptkfkmdfhnv.supabase.co/storage/v1/object/sign/ecoute/product/parfum.png?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6InN0b3JhZ2UtdXJsLXNpZ25pbmcta2V5XzI4NTliMWI5LTBjNzctNDAxMS1iODQ3LTIxM2M2OGI5ZjMwNyJ9.eyJ1cmwiOiJlY291dGUvcHJvZHVjdC9wYXJmdW0ucG5nIiwiaWF0IjoxNzQ1NzI5NTk5LCJleHAiOjE3NzcyNjU1OTl9.-8wIQ78HpXx6mXTYPlpjA5xlIfy1qmdjJiv9lohE9zg',
-  description: "A timeless piece that combines elegance with comfort. The Ruffle Maxi Dress features a flattering V-neckline, delicate ruffle detailing, and a flowing silhouette that moves beautifully with every step.",
+  description: "Sebuah pakaian abadi yang menggabungkan keanggunan dengan kenyamanan. Gaun Maxi Ruffle memiliki garis leher V yang menawan, detail ruffle yang halus, dan siluet yang mengalir yang bergerak indah dengan setiap langkah.",
   details: {
-    material: "100% Premium Cotton",
-    fit: "Regular Fit",
-    care: "Machine wash cold, tumble dry low",
+    material: "100% Katun Premium",
+    fit: "Potongan Regular",
+    care: "Cuci dengan mesin suhu dingin, keringkan dengan suhu rendah",
     features: [
-      "Adjustable straps",
-      "Side slit for ease of movement",
-      "Lined bodice"
+      "Tali yang dapat disesuaikan",
+      "Belahan samping untuk kemudahan bergerak",
+      "Badan berlapis"
     ]
   }
 };
@@ -142,7 +142,7 @@ export default function ProductDetail() {
 
             {/* Quantity */}
             <div className="mb-6">
-              <h3 className="text-sm font-medium mb-2">Quantity</h3>
+              <h3 className="text-sm font-medium mb-2">Jumlah</h3>
               <div className="flex items-center border rounded-md w-32">
                 <button 
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -163,7 +163,7 @@ export default function ProductDetail() {
             {/* Action Buttons */}
             <div className="flex space-x-4 mb-8">
               <button className="flex-1 py-3 bg-black text-white rounded-md hover:bg-gray-800 transition">
-                Add to Cart
+                Tambah ke Keranjang
               </button>
               <button className="p-3 border rounded-md hover:bg-gray-50 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">

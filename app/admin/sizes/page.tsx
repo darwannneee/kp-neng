@@ -6,12 +6,19 @@ import { faPenToSquare, faTrash, faPlus, faRulerCombined } from '@fortawesome/fr
 
 interface Size {
   id: string;
-  name: string;
+  size_id: string;
+  created_at: string;
+  created_by_id?: string;
+  created_by?: {
+    id: string;
+    username: string;
+    image_url?: string;
+  };
 }
 
 export default function AdminSizes() {
   const [sizes, setSizes] = useState<Size[]>([]);
-  const [newSize, setNewSize] = useState('');
+  const [newSizeId, setNewSizeId] = useState('');
   const [editingSize, setEditingSize] = useState<Size | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,16 +28,43 @@ export default function AdminSizes() {
   // Fetch all sizes
   const fetchSizes = async () => {
     setLoading(true);
+    setError(null); // Clear previous errors
     try {
-      const res = await fetch('/api/variant-sizes');
+      const adminId = localStorage.getItem("adminId");
+      const res = await fetch('/api/variant-sizes', {
+        headers: {
+          'x-admin-id': adminId || ''
+        }
+      });
       const data = await res.json();
+
+      // Debug log: Check data received from API
+      console.log('Fetched sizes data:', data);
+
       if (res.ok) {
-        setSizes(data);
+        // Optional: Add validation if data structure is critical
+        if (Array.isArray(data)) {
+           // Map data to ensure created_at is treated as string if needed
+          const processedData = data.map((item: any) => ({
+            ...item,
+            created_at: typeof item.created_at === 'string' ? item.created_at : '', // Ensure created_at is string
+            created_by_id: typeof item.created_by_id === 'string' ? item.created_by_id : null // Ensure created_by_id is string or null
+          }));
+           console.log('Processed sizes data:', processedData);
+          setSizes(processedData);
+        } else {
+           console.error("API returned non-array data:", data);
+           setError('Format data dari server tidak sesuai.');
+           setSizes([]);
+        }
       } else {
+        console.error("Failed to fetch sizes API error:", data.error);
         setError(data.error || 'Failed to fetch sizes');
+        setSizes([]);
       }
     } catch (error) {
-      console.error("Network or parsing error:", error)
+      console.error("Network or parsing error during fetchSizes:", error)
+      setError('Terjadi kesalahan jaringan saat mengambil ukuran.');
       setSizes([])
     } finally {
       setLoading(false);
@@ -44,21 +78,25 @@ export default function AdminSizes() {
   // Add new size
   const handleAddSize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSize.trim()) return;
+    if (!newSizeId.trim()) return;
 
     setLoading(true);
     setError(null);
     try {
+      const adminId = localStorage.getItem("adminId");
       const res = await fetch('/api/variant-sizes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newSize.trim() })
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-id': adminId || ''
+        },
+        body: JSON.stringify({ size_id: newSizeId.trim() })
       });
       const data = await res.json();
       
       if (res.ok) {
         setSuccess('Size added successfully');
-        setNewSize('');
+        setNewSizeId('');
         setIsModalOpen(false);
         fetchSizes();
       } else {
@@ -75,17 +113,20 @@ export default function AdminSizes() {
   // Update size
   const handleUpdateSize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSize || !editingSize.name.trim() || !editingSize.id) return;
+    if (!editingSize || !editingSize.size_id.trim() || !editingSize.id) return;
 
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/variant-sizes', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-id': localStorage.getItem("adminId") || ''
+        },
         body: JSON.stringify({ 
           id: String(editingSize.id), 
-          name: editingSize.name.trim() 
+          size_id: editingSize.size_id.trim() 
         })
       });
       const data = await res.json();
@@ -119,7 +160,8 @@ export default function AdminSizes() {
       const res = await fetch('/api/variant-sizes', {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-admin-id': localStorage.getItem("adminId") || ''
         },
         body: JSON.stringify({ id })
       });
@@ -166,7 +208,7 @@ export default function AdminSizes() {
                 <button
                   onClick={() => {
                     setEditingSize(null);
-                    setNewSize('');
+                    setNewSizeId('');
                     setIsModalOpen(true);
                   }}
                   className="bg-white text-blue-600 px-5 py-3 rounded-full font-medium hover:bg-opacity-90 shadow-md transition duration-200 flex items-center"
@@ -205,9 +247,18 @@ export default function AdminSizes() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nama Ukuran
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dibuat Oleh
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Dibuat Pada
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Aksi
                 </th>
               </tr>
@@ -215,26 +266,59 @@ export default function AdminSizes() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading && !sizes.length ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : sizes.length === 0 ? (
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                     Tidak ada ukuran
                   </td>
                 </tr>
               ) : (
                 sizes.map((size) => (
                   <tr key={size.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {size.id.substring(0, 6)}...
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {size.size_id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {size.created_by ? (
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center overflow-hidden">
+                            {size.created_by.image_url ? (
+                              <img src={size.created_by.image_url} alt="Admin" className="h-full w-full object-cover" />
+                            ) : (
+                              <svg className="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">{size.created_by.username}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {size.created_at ? new Date(size.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      }) : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {editingSize?.id === size.id ? (
                         <form onSubmit={handleUpdateSize} className="flex gap-2 items-center">
                           <input
                             type="text"
-                            value={editingSize.name}
-                            onChange={(e) => setEditingSize({ ...editingSize, name: e.target.value })}
+                            value={editingSize.size_id}
+                            onChange={(e) => setEditingSize({ ...editingSize, size_id: e.target.value })}
                             className="w-full px-2 py-1 border rounded"
                             autoFocus
                           />
@@ -255,28 +339,21 @@ export default function AdminSizes() {
                           </button>
                         </form>
                       ) : (
-                        <span className="text-base">{size.name}</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {editingSize?.id === size.id ? null : (
                         <>
                           <button
                             onClick={() => {
                               setEditingSize(size);
-                              setNewSize('');
+                              setNewSizeId('');
                             }}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                            disabled={loading}
+                            className="text-indigo-600 hover:text-indigo-900 mr-3"
                           >
-                            <FontAwesomeIcon icon={faPenToSquare} />
+                            Edit
                           </button>
                           <button
                             onClick={() => handleDeleteSize(size.id)}
                             className="text-red-600 hover:text-red-900"
-                            disabled={loading}
                           >
-                            <FontAwesomeIcon icon={faTrash} />
+                            Hapus
                           </button>
                         </>
                       )}
@@ -306,8 +383,8 @@ export default function AdminSizes() {
               <form onSubmit={handleAddSize} className="space-y-4">
                 <input
                   type="text"
-                  value={newSize}
-                  onChange={(e) => setNewSize(e.target.value)}
+                  value={newSizeId}
+                  onChange={(e) => setNewSizeId(e.target.value)}
                   placeholder="Masukkan nama ukuran (misal: S, M, L, XL, XXL)"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                   disabled={loading}
@@ -324,7 +401,7 @@ export default function AdminSizes() {
                   <button
                     type="submit"
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2"
-                    disabled={loading || !newSize.trim()}
+                    disabled={loading || !newSizeId.trim()}
                   >
                     <FontAwesomeIcon icon={faPlus} className="text-xs" /> Tambah Ukuran
                   </button>

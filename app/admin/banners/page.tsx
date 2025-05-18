@@ -27,6 +27,14 @@ interface Banner {
   title?: string;
   subtitle?: string;
   custom_text?: string;
+  created_at: string;
+  updated_at?: string;
+  created_by_id?: string;
+  created_by?: {
+    id: string;
+    username: string;
+    image_url?: string;
+  };
   product: {
     id: string;
     name: string;
@@ -75,12 +83,12 @@ export default function AdminBanners() {
   const fetchBanners = async () => {
     try {
       const res = await fetch("/api/admin/banners");
-      if (!res.ok) throw new Error("Failed to fetch banners");
+      if (!res.ok) throw new Error("Gagal mengambil banner");
       const data = await res.json();
       setBanners(data);
     } catch (error) {
       console.error("Error fetching banners:", error);
-      setError("Failed to load banners");
+      setError("Gagal memuat banner");
     } finally {
       setIsLoading(false);
     }
@@ -89,13 +97,13 @@ export default function AdminBanners() {
   const fetchProducts = async () => {
     try {
       const res = await fetch("/api/admin/products?include=admin,category");
-      if (!res.ok) throw new Error("Failed to fetch products");
+      if (!res.ok) throw new Error("Gagal mengambil produk");
       const data = await res.json();
       console.log('Fetched Products:', data);
       setProducts(data);
     } catch (error) {
       console.error("Error fetching products:", error);
-      setError("Failed to load products");
+      setError("Gagal memuat produk");
     }
   };
 
@@ -130,19 +138,19 @@ export default function AdminBanners() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this banner?")) return;
+    if (!confirm("Apakah Anda yakin ingin menghapus banner ini?")) return;
 
     try {
       const res = await fetch(`/api/admin/banners?id=${id}`, {
         method: "DELETE",
       });
 
-      if (!res.ok) throw new Error("Failed to delete banner");
+      if (!res.ok) throw new Error("Gagal menghapus banner");
 
       await fetchBanners();
     } catch (error) {
       console.error("Error deleting banner:", error);
-      setError("Failed to delete banner");
+      setError("Gagal menghapus banner");
     }
   };
 
@@ -156,7 +164,7 @@ export default function AdminBanners() {
       const selectedProduct = products.find(p => p.id === formData.productId);
       console.log('Selected Product:', selectedProduct);
       
-      if (!selectedProduct) throw new Error("Product not found");
+      if (!selectedProduct) throw new Error("Produk tidak ditemukan");
 
       // Debug logs
       console.log('Form Data Position:', formData.position);
@@ -173,7 +181,7 @@ export default function AdminBanners() {
 
       // Validate position availability
       if (!availablePositions.includes(position)) {
-        throw new Error(`Position ${position} is not available for ${formData.type} banner. Available positions: ${availablePositions.join(', ')}`);
+        throw new Error(`Posisi ${position} tidak tersedia untuk banner ${formData.type}. Posisi tersedia: ${availablePositions.join(', ')}`);
       }
 
       // Prepare body based on banner type
@@ -199,14 +207,14 @@ export default function AdminBanners() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || `Failed to ${isEditing ? "update" : "create"} banner`);
+        throw new Error(errorData.error || `Gagal ${isEditing ? "memperbarui" : "menambah"} banner`);
       }
 
       await fetchBanners();
       setIsModalOpen(false);
     } catch (error) {
-      console.error(`Error ${isEditing ? "updating" : "creating"} banner:`, error);
-      setError(error instanceof Error ? error.message : `Failed to ${isEditing ? "update" : "create"} banner`);
+      console.error(`Error ${isEditing ? "memperbarui" : "menambah"} banner:`, error);
+      setError(error instanceof Error ? error.message : `Gagal ${isEditing ? "memperbarui" : "menambah"} banner`);
     }
   };
 
@@ -236,7 +244,7 @@ export default function AdminBanners() {
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to move banner");
+      if (!res.ok) throw new Error("Gagal memindahkan banner");
 
       const res2 = await fetch("/api/admin/banners", {
         method: "PUT",
@@ -251,12 +259,12 @@ export default function AdminBanners() {
         }),
       });
 
-      if (!res2.ok) throw new Error("Failed to move banner");
+      if (!res2.ok) throw new Error("Gagal memindahkan banner");
 
       await fetchBanners();
     } catch (error) {
       console.error("Error moving banner:", error);
-      setError("Failed to move banner");
+      setError("Gagal memindahkan banner");
     }
   };
 
@@ -318,10 +326,10 @@ export default function AdminBanners() {
           </div>
           <div className="relative px-4 py-16 sm:px-6 sm:py-24 lg:py-32 lg:px-8">
             <h1 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-              Manage Banners
+              Kelola Banner
             </h1>
             <p className="mt-6 max-w-lg mx-auto text-center text-xl text-white sm:max-w-3xl">
-              Customize your landing page banners and featured products
+              Sesuaikan banner halaman utama dan produk unggulan Anda
             </p>
           </div>
         </div>
@@ -358,25 +366,31 @@ export default function AdminBanners() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Image
+                        Gambar
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Type
+                        Tipe
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Position
+                        Posisi
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Product
+                        Produk
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Title
+                        Judul
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Subtitle
+                        Subjudul
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Custom Text
+                        Teks Kustom
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dibuat Oleh
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dibuat Pada
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
@@ -415,6 +429,39 @@ export default function AdminBanners() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {banner.custom_text}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {banner.created_by ? (
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center overflow-hidden">
+                                {banner.created_by.image_url ? (
+                                  <img src={banner.created_by.image_url} alt="Admin" className="h-full w-full object-cover" />
+                                ) : (
+                                  <svg className="h-5 w-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">{banner.created_by.username}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {banner.created_at ? (
+                            new Date(banner.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex space-x-2">
@@ -469,7 +516,7 @@ export default function AdminBanners() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Type
+                    Tipe
                   </label>
                   <select
                     value={formData.type}
@@ -485,7 +532,7 @@ export default function AdminBanners() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Position
+                    Posisi
                   </label>
                   <select
                     value={formData.position}
@@ -501,7 +548,7 @@ export default function AdminBanners() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Product
+                    Produk
                   </label>
                   <select
                     value={formData.productId}
@@ -520,7 +567,7 @@ export default function AdminBanners() {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     required
                   >
-                    <option value="">Select a product</option>
+                    <option value="">Pilih produk</option>
                     {products.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.name}
@@ -532,7 +579,7 @@ export default function AdminBanners() {
                 {formData.type === 'swimwear' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Custom Text
+                      Teks Kustom
                     </label>
                     <input
                       type="text"
@@ -547,7 +594,7 @@ export default function AdminBanners() {
                 {formData.type === 'favorite_places' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Title
+                      Judul
                     </label>
                     <input
                       type="text"
@@ -571,7 +618,7 @@ export default function AdminBanners() {
                     type="submit"
                     className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    {isEditing ? "Update" : "Add"}
+                    {isEditing ? "Perbarui" : "Tambah"}
                   </button>
                 </div>
               </div>

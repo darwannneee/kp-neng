@@ -20,7 +20,12 @@ const LoraFontBold = Lora({
 interface Size {
   id: string;
   name: string;
-  created_at?: string;
+  created_at: string;
+  created_by?: {
+    id: string;
+    username: string;
+    image_url?: string;
+  };
 }
 
 export default function AdminVariantSizes() {
@@ -39,7 +44,15 @@ export default function AdminVariantSizes() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/variant-sizes');
+      // Get admin ID from localStorage for authentication
+      const adminId = localStorage.getItem("adminId");
+      
+      const res = await fetch('/api/variant-sizes', {
+        headers: {
+          'x-admin-id': adminId || '' // Include admin authentication header
+        }
+      });
+      
       const data = await res.json();
       if (res.ok) {
         setSizes(data);
@@ -91,9 +104,20 @@ export default function AdminVariantSizes() {
     }
     setLoading(true);
     try {
+      // Get admin ID from localStorage for authentication
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        setError("Admin authentication required. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch('/api/variant-sizes', {
         method: editingSize ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-id': adminId // Include admin authentication header
+        },
         body: JSON.stringify({ 
           id: editingSize?.id,
           name: newSize.trim() 
@@ -130,9 +154,20 @@ export default function AdminVariantSizes() {
     setSuccess(null);
     setLoading(true);
     try {
+      // Get admin ID from localStorage for authentication
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        setError("Admin authentication required. Please log in.");
+        setLoading(false);
+        return;
+      }
+      
       const res = await fetch('/api/variant-sizes', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-admin-id': adminId // Include admin authentication header 
+        },
         body: JSON.stringify({ id })
       });
       const data = await res.json();
@@ -279,6 +314,12 @@ export default function AdminVariantSizes() {
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Nama Ukuran
                       </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dibuat Oleh
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dibuat Pada
+                      </th>
                       <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Aksi
                       </th>
@@ -299,6 +340,39 @@ export default function AdminVariantSizes() {
                               <div className="text-sm font-medium text-gray-900">{size.name}</div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {size.created_by ? (
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden">
+                                {size.created_by.image_url ? (
+                                  <img src={size.created_by.image_url} alt="Admin" className="h-full w-full object-cover" />
+                                ) : (
+                                  <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">{size.created_by.username}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span>-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {size.created_at ? (
+                            new Date(size.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          ) : (
+                            '-'
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">

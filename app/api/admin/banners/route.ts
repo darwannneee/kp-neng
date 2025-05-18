@@ -10,6 +10,11 @@ export async function GET() {
       .from("banners")
       .select(`
         *,
+        created_by:admins!created_by_id (
+          id,
+          username,
+          image_url
+        ),
         product:products (
           id,
           name,
@@ -39,12 +44,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const { type, position, productId, title, subtitle, custom_text } = body;
+    const { type, position, productId, title, subtitle, custom_text, adminId } = body;
 
     if (!type || !productId) {
       return NextResponse.json(
         { error: "Type and productId are required" },
         { status: 400 }
+      );
+    }
+    
+    // Get admin ID from body or from request headers
+    const created_by_id = adminId || request.headers.get('x-admin-id');
+    if (!created_by_id) {
+      return NextResponse.json(
+        { error: "Admin ID is required" },
+        { status: 401 }
       );
     }
 
@@ -58,9 +72,26 @@ export async function POST(request: Request) {
           title,
           subtitle,
           custom_text,
+          created_by_id: created_by_id, // Add creator ID
         },
       ])
-      .select()
+      .select(`
+        *,
+        created_by:admins!created_by_id (
+          id,
+          username,
+          image_url
+        ),
+        product:products (
+          id,
+          name,
+          image_url,
+          category:categories (
+            id,
+            name
+          )
+        )
+      `)
       .single();
 
     if (error) throw error;
@@ -98,9 +129,27 @@ export async function PUT(request: Request) {
         title,
         subtitle,
         custom_text,
+        // Note: We don't update created_by_id when updating a banner
+        // This preserves the original creator information
       })
       .eq("id", id)
-      .select()
+      .select(`
+        *,
+        created_by:admins!created_by_id (
+          id,
+          username,
+          image_url
+        ),
+        product:products (
+          id,
+          name,
+          image_url,
+          category:categories (
+            id,
+            name
+          )
+        )
+      `)
       .single();
 
     if (error) throw error;

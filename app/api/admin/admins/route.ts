@@ -95,7 +95,14 @@ export async function GET(request: NextRequest) {
     // Fetch all admins
     const { data: admins, error } = await supabase
       .from('admins')
-      .select('id, username, email, is_superadmin, created_at');
+      .select(`
+        id, 
+        username, 
+        email, 
+        is_superadmin, 
+        created_at,
+        created_by:admins!created_by_id(id, username)
+      `);
       
     if (error) {
       console.error('Error fetching admins:', error);

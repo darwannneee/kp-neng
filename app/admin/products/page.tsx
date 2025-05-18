@@ -28,6 +28,7 @@ interface Product {
   image_url: string;
   category_id: string;
   admin_id: string;
+  created_at?: string; // Added created_at property
   admin?: {
     username: string;
     id: string;
@@ -186,22 +187,32 @@ export default function AdminProducts() {
 
   const fetchSizes = async () => {
     try {
-      const res = await fetch('/api/variant-sizes')
+      // Get admin ID from localStorage and include it in the request header
+      const adminId = localStorage.getItem("adminId");
+      
+      const res = await fetch('/api/variant-sizes', {
+        headers: {
+          'x-admin-id': adminId || ''  // Include admin authentication header
+        }
+      });
 
       if(!res.ok) {
-        console.error("Failed to fetch sizes", res.status)
+        console.error("Failed to fetch sizes", res.status);
+        if (res.status === 401) {
+          console.error("Admin authentication required");
+        }
       }
 
-      const data = await res.json()
+      const data = await res.json();
 
       if(Array.isArray(data)) {
-        setSizes(data)
+        setSizes(data);
       } else {
-        console.error("Expected array but got:", data)
+        console.error("Expected array but got:", data);
       }
     } catch(err) {
-      console.error("Network or parsing error:", err)
-      setSizes([])
+      console.error("Network or parsing error:", err);
+      setSizes([]);
     }
   }
 
@@ -596,8 +607,45 @@ export default function AdminProducts() {
                       </div>
                     </div>
                     <p className="text-gray-600 mb-2 text-sm line-clamp-2">{product.description}</p>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center mb-2">
                       <span className="text-sm font-semibold text-blue-600">Rp {product.price}</span>
+                    </div>
+                    
+                    {/* Created By information */}
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <span className="mr-1">Dibuat oleh:</span>
+                        {product.admin ? (
+                          <div className="flex items-center">
+                            <div className="relative w-5 h-5 mr-1 bg-gray-100 rounded-full overflow-hidden flex items-center justify-center">
+                              {product.admin.image_url ? (
+                                <img src={product.admin.image_url} alt="Admin" className="h-full w-full object-cover" />
+                              ) : (
+                                <svg className="h-3 w-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="font-medium text-gray-600">{product.admin.username}</span>
+                          </div>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </div>
+                      
+                      {/* Created At information */}
+                      {product.created_at && (
+                        <div className="flex items-center text-xs text-gray-500 mt-1">
+                          <span className="mr-1">Pada:</span>
+                          <span>
+                            {new Date(product.created_at).toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -5,10 +5,24 @@ import supabase from "@/utils/supabase/client";
 
 
 // GET: Ambil semua kategori dari Supabase (via API publik)
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        // Fetch data kategori dari Supabase
-        const { data, error } = await supabase.from("categories").select("*").order('name', { ascending: true });
+        // Check if we need to include admin info
+        const includeAdmin = req.nextUrl.searchParams.get('include') === 'admin';
+        
+        // Fetch data kategori dari Supabase - with join to admins if needed
+        const query = includeAdmin
+            ? supabase.from("categories").select(`
+                *,
+                created_by:admins!created_by_id (
+                  id,
+                  username,
+                  image_url
+                )
+              `)
+            : supabase.from("categories").select("*");
+            
+        const { data, error } = await query.order('name', { ascending: true });
 
         if (error) {
             console.error("Supabase error fetching categories:", error);
@@ -20,7 +34,6 @@ export async function GET() {
          if (!data) {
              return NextResponse.json([], { status: 200 });
          }
-
 
         return NextResponse.json(data);
     } catch (err) {
@@ -36,12 +49,22 @@ export async function GET() {
 // POST: Tambah kategori baru (via API publik)
 export async function POST(req: NextRequest) {
     try {
-        const { name } = await req.json();
+        const { name, admin_id } = await req.json();
 
         if (!name || typeof name !== 'string' || name.trim() === '') {
             return NextResponse.json(
                 { error: "Nama kategori wajib diisi dan berupa string" },
                 { status: 400 }
+            );
+        }
+        
+        // Get admin ID from request body or header
+        const created_by_id = admin_id || req.headers.get('x-admin-id');
+        
+        if (!created_by_id) {
+            return NextResponse.json(
+                { error: "Admin ID diperlukan untuk membuat kategori" },
+                { status: 401 }
             );
         }
 
@@ -69,8 +92,18 @@ export async function POST(req: NextRequest) {
 
         // Tambahkan kategori ke database
         const { data, error } = await supabase.from("categories").insert([
-            { name: name.trim() },
-        ]).select().single();
+            { 
+                name: name.trim(),
+                created_by_id: created_by_id // Add creator ID 
+            },
+        ]).select(`
+            *,
+            created_by:admins!created_by_id (
+              id,
+              username,
+              image_url
+            )
+        `).single();
 
 
         if (error) {

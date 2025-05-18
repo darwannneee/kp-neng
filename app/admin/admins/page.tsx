@@ -18,6 +18,10 @@ interface Admin {
   image_url: string | null;
   is_superadmin: boolean;
   created_at: string;
+  created_by?: {
+    id: string;
+    username: string;
+  };
 }
 
 interface FormData {
@@ -365,7 +369,6 @@ export default function AdminAdmins() {
                             {admin.email}
                         </td>
                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {/* Admin cannot downgrade themselves */}
                             {admin.is_superadmin ? (
                                 <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Ya</span>
                             ) : (
@@ -373,7 +376,6 @@ export default function AdminAdmins() {
                             )}
                         </td>
                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {/* Format timestamp if needed */}
                             {new Date(admin.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

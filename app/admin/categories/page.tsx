@@ -22,10 +22,10 @@ interface Category {
   id: string;
   name: string;
   created_at: string;
-  admin_id?: string;
-  admin?: {
-    username: string;
+  created_by_id?: string;
+  created_by?: {
     id: string;
+    username: string;
     image_url?: string;
   };
 }
@@ -372,7 +372,24 @@ export default function AdminCategories() {
                           })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {category.admin?.username || "Unknown"}
+                          {category.created_by ? (
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 bg-green-100 rounded-full flex items-center justify-center overflow-hidden">
+                                {category.created_by.image_url ? (
+                                  <img src={category.created_by.image_url} alt="Admin" className="h-full w-full object-cover" />
+                                ) : (
+                                  <svg className="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="ml-3">
+                                <div className="text-sm font-medium text-gray-900">{category.created_by.username}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Unknown</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
