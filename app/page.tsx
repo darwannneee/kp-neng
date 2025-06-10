@@ -387,7 +387,7 @@ export default function Home() {
           BARU SAJA MASUK
         </h2>
         <h1 className="text-3xl md:text-4xl font-medium mt-2">
-          Pakaian Renang
+          Pakaian
         </h1>
         <button 
           onClick={() => router.push('/products?category=swimwear')}
