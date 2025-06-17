@@ -376,7 +376,7 @@ export default function AdminProducts() {
       fetchProducts();
     } catch (error) {
       console.error('Error submitting form:', error);
-      alert('Failed to save product. Please try again.');
+      alert('Failed to save product. Please try again. error = '+ error);
     } finally {
       setIsSubmitting(false);
     }
