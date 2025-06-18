@@ -9,6 +9,11 @@ const nextConfig = {
       },
     ],
   },
+  api: {
+    bodyParser: {
+      sizeLimit: '8mb', // Increase from default
+    },
+  },
   eslint: {
     // Warning instead of error during builds
     ignoreDuringBuilds: true,

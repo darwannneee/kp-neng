@@ -264,6 +264,20 @@ export default function AdminProducts() {
         return;
       }
 
+      // Add validation before submission
+      if (formData.image && formData.image.size > 2 * 1024 * 1024) {
+        alert('Main product image must be smaller than 2MB');
+        return;
+      }
+
+      // Check variant images too
+      for (const variant of variants) {
+        if (variant.image && variant.image.size > 1 * 1024 * 1024) {
+          alert(`Variant image ${variant.name} must be smaller than 1MB`);
+          return;
+        }
+      }
+
       // Prepare variants data with proper structure
       const processedVariants = variants.map((variant: VariantFormData) => {
         // Hanya sertakan image jika benar-benar File object dengan ukuran > 0
@@ -462,7 +476,7 @@ export default function AdminProducts() {
         {/* Hero section */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOCA0LTQgNC00LTEuOC00LTQgMS44LTQgNC00em0wIDMyYzIuMiAwIDQgMS44IDQgNHMtMS44IDQtNCA0LTQtMS44LTQtNCAxLjgtNCA0LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOC00IDQtNC0xLjgtNC00IDQtMS44LTQtNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0wIDMyYzIuMiAwIDQgMS44IDQgNHMtMS44IDQtNCA0LTQtMS44LTQtNC0xLjgtNC00IDQtNC00LTEuOC00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
           </div>
 
           <div className="relative py-16 px-6 mx-auto max-w-5xl">
@@ -1095,4 +1109,36 @@ function VariantList({ variants, setVariants, sizes }: {
       </button>
     </div>
   );
+}
+
+// Add to your handleSubmit function in page.tsx before creating FormData
+async function compressImage(file, maxWidth = 1200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = maxWidth / img.width;
+        canvas.width = maxWidth;
+        canvas.height = img.height * ratio;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              }));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+    };
+  });
 }
