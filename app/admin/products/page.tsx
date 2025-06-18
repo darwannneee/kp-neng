@@ -15,6 +15,53 @@ import {
 import { VariantType, VariantOption } from '@/utils/types'
 import React from "react"
 
+// Helper function to compress images before upload
+const compressImage = async (file: File, maxWidth = 1200, quality = 0.7): Promise<File> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = document.createElement('img');
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        
+        // Calculate dimensions while maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = Math.round(height * maxWidth / width);
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        // Convert to blob with reduced quality
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              }));
+            } else {
+              // Fallback to original file if compression fails
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+    };
+  });
+};
+
 const LoraFontBold = Lora({
   weight: '400',
   subsets: ['latin']
@@ -217,28 +264,34 @@ export default function AdminProducts() {
   }
 
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const target = e.target;
+  const handleInputChange = (e: React.ChangeEvent<FormInputElement>) => {
+    const { name, value, files } = e.target as HTMLInputElement;
     
-    if (target instanceof HTMLInputElement && target.type === "file") {
-      const files = target.files;
-      if (files && files[0]) {
-        const file = files[0];
-        setFormData(prev => ({
-          ...prev,
-          image: file,
-          existingImage: prev.existingImage,
-        }));
-        
-        // Create preview URL for the new image
-        const previewUrl = URL.createObjectURL(file);
-        setImagePreview(previewUrl);
+    // Handle image file upload
+    if (name === 'image' && files && files.length > 0) {
+      const file = files[0];
+      
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image file is too large. Please select an image smaller than 10MB.');
+        return;
       }
+      
+      // Create URL for preview
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      
+      // Update form data with file
+      setFormData({
+        ...formData,
+        image: file,
+      });
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [target.name]: target.value
-      }));
+      // Handle other form fields
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
     }
   };
 
@@ -254,49 +307,68 @@ export default function AdminProducts() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (isSubmitting) return;
     setIsSubmitting(true);
-
+    
     try {
+      // Validation
+      if (!formData.name || !formData.price || !formData.description || !formData.category_id) {
+        alert("Please fill in all required fields");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Get product price without commas
+      const price = formData.price.replace(/,/g, "");
+      
+      // Check if number
+      if (isNaN(Number(price))) {
+        alert("Price must be a number");
+        setIsSubmitting(false);
+        return;
+      }
+
       const adminId = localStorage.getItem("adminId");
       if (!adminId) {
-        alert("Please login first");
-        router.push("/admin/login");
+        alert("Admin not authenticated");
+        setIsSubmitting(false);
         return;
       }
 
-      // Add validation before submission
-      if (formData.image && formData.image.size > 2 * 1024 * 1024) {
-        alert('Main product image must be smaller than 2MB');
+      // Check if any variants were added
+      if (variants.length === 0) {
+        alert("Please add at least one variant");
+        setIsSubmitting(false);
         return;
       }
 
-      // Check variant images too
+      // Validate variants
       for (const variant of variants) {
-        if (variant.image && variant.image.size > 1 * 1024 * 1024) {
-          alert(`Variant image ${variant.name} must be smaller than 1MB`);
+        if (!variant.name) {
+          alert("Please enter a name for all variants");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        if (variant.sizes.length === 0) {
+          alert(`Please select at least one size for variant: ${variant.name}`);
+          setIsSubmitting(false);
           return;
         }
       }
-
-      // Prepare variants data with proper structure
-      const processedVariants = variants.map((variant: VariantFormData) => {
-        // Hanya sertakan image jika benar-benar File object dengan ukuran > 0
-        const isValidImage = variant.image instanceof File && variant.image.size > 0;
-        
-        console.log(`Processing variant data for: ${variant.name}`, {
-          hasImage: !!variant.image,
-          isFileInstance: variant.image instanceof File,
-          imageSize: variant.image instanceof File ? variant.image.size : 0,
-          imageType: variant.image instanceof File ? variant.image.type : null,
-          imageName: variant.image instanceof File ? variant.image.name : null,
-          isValidImage: isValidImage,
-          existingImageUrl: variant.image_url
-        });
-
+      
+      // If there are more than 8 variants, consider split submission to avoid 413 errors
+      if (variants.length > 8) {
+        return await handleLargeProductSubmission(adminId, price);
+      }
+      
+      // Process variants and create FormData
+      const processedVariants = variants.map(variant => {
         return {
           id: variant.id,
           name: variant.name,
-          image: isValidImage ? variant.image : null,
+          image: variant.image,
           image_url: variant.image_url || null,
           sizes: variant.sizes.map((size: VariantSize) => ({
             size_id: size.size_id
@@ -311,9 +383,17 @@ export default function AdminProducts() {
       formDataObj.append("category_id", formData.category_id);
       formDataObj.append("admin_id", adminId);
       
-      // Tambahkan gambar produk utama jika ada
+      // Compress and add main product image if exists
       if (formData.image) {
-        formDataObj.append("image", formData.image);
+        // Check if image size is large
+        if (formData.image.size > 1000000) { // If larger than ~1MB
+          console.log('Compressing main product image:', formData.image.name);
+          const compressedImage = await compressImage(formData.image, 1000, 0.7);
+          console.log('Image compressed from', formData.image.size, 'to', compressedImage.size, 'bytes');
+          formDataObj.append("image", compressedImage);
+        } else {
+          formDataObj.append("image", formData.image);
+        }
       }
       if (formData.existingImage) {
         formDataObj.append("existingImage", formData.existingImage);
@@ -328,17 +408,35 @@ export default function AdminProducts() {
       }));
       formDataObj.append('variants', JSON.stringify(variantsData));
       
-      // Tambahkan file gambar varian secara terpisah dengan nama yang jelas
-      processedVariants.forEach((variant, index) => {
-        if (variant.image instanceof File && variant.image.size > 0) {
-          console.log(`Appending variant image file for ${variant.name}`, {
-            fileName: variant.image.name,
-            fileSize: variant.image.size
-          });
-          // Gunakan format nama yang jelas: variantImage_[index]
-          formDataObj.append(`variantImage_${index}`, variant.image);
+      // Compress and add variant images in batches to avoid hitting size limits
+      const MAX_VARIANTS_PER_BATCH = 5; // Adjust based on your image sizes
+      
+      // Process variant images in batches
+      for (let i = 0; i < processedVariants.length; i += MAX_VARIANTS_PER_BATCH) {
+        const batch = processedVariants.slice(i, i + MAX_VARIANTS_PER_BATCH);
+        
+        // Process each variant in this batch
+        for (let j = 0; j < batch.length; j++) {
+          const variant = batch[j];
+          const index = i + j;
+          
+          if (variant.image instanceof File && variant.image.size > 0) {
+            console.log(`Processing variant image for ${variant.name}`, {
+              fileName: variant.image.name,
+              fileSize: variant.image.size
+            });
+            
+            // Compress the image if it's larger than ~500KB
+            if (variant.image.size > 500000) {
+              const compressedImage = await compressImage(variant.image, 800, 0.7);
+              console.log(`Variant image compressed from ${variant.image.size} to ${compressedImage.size} bytes`);
+              formDataObj.append(`variantImage_${index}`, compressedImage);
+            } else {
+              formDataObj.append(`variantImage_${index}`, variant.image);
+            }
+          }
         }
-      });
+      }
 
       console.log('Submitting form data:', {
         name: formData.name,
@@ -391,6 +489,143 @@ export default function AdminProducts() {
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('Failed to save product. Please try again. error = '+ error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle submission of products with many variants (to avoid 413 errors)
+  const handleLargeProductSubmission = async (adminId: string, price: string) => {
+    try {
+      // Step 1: Create the product first with basic info and main image only
+      const initialFormData = new FormData();
+      initialFormData.append("name", formData.name);
+      initialFormData.append("price", price);
+      initialFormData.append("description", formData.description);
+      initialFormData.append("category_id", formData.category_id);
+      initialFormData.append("admin_id", adminId);
+      
+      // Add main image
+      if (formData.image) {
+        const compressedMainImage = await compressImage(formData.image, 1000, 0.7);
+        initialFormData.append("image", compressedMainImage);
+      }
+      if (formData.existingImage) {
+        initialFormData.append("existingImage", formData.existingImage);
+      }
+      
+      // Add empty variants array to avoid backend validation errors
+      initialFormData.append('variants', JSON.stringify([]));
+      
+      // Create the product first
+      const method = editingProduct ? "PUT" : "POST";
+      const url = editingProduct 
+        ? `/api/admin/products/${editingProduct.id}` 
+        : "/api/admin/products";
+      
+      console.log('Creating product with basic info first...');
+      const initialRes = await fetch(url, {
+        method,
+        body: initialFormData,
+      });
+      
+      if (!initialRes.ok) {
+        const errorData = await initialRes.json();
+        console.error('Failed to create initial product:', errorData);
+        alert(`Error: ${errorData.error || 'Failed to create product'}`);
+        return;
+      }
+      
+      const productData = await initialRes.json();
+      const productId = productData.id || editingProduct?.id;
+      
+      if (!productId) {
+        console.error('No product ID returned from initial creation');
+        alert('Error: Failed to get product ID');
+        return;
+      }
+      
+      console.log('Product created successfully. Adding variants now in batches...');
+      
+      // Step 2: Add variants in batches to avoid payload size limits
+      const BATCH_SIZE = 3; // Number of variants per batch, adjust as needed
+      const processedVariants = variants.map(variant => {
+        return {
+          id: variant.id,
+          name: variant.name,
+          image: variant.image,
+          image_url: variant.image_url || null,
+          sizes: variant.sizes.map((size: VariantSize) => ({
+            size_id: size.size_id
+          }))
+        };
+      });
+      
+      // Process variants in batches
+      for (let i = 0; i < processedVariants.length; i += BATCH_SIZE) {
+        const batchVariants = processedVariants.slice(i, i + BATCH_SIZE);
+        console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(processedVariants.length/BATCH_SIZE)}`);
+        
+        const batchFormData = new FormData();
+        
+        // Add only the variants in this batch
+        const variantsData = batchVariants.map(v => ({
+          id: v.id,
+          name: v.name,
+          image_url: v.image_url,
+          sizes: v.sizes
+        }));
+        batchFormData.append('variants', JSON.stringify(variantsData));
+        
+        // Add only these variant images
+        for (let j = 0; j < batchVariants.length; j++) {
+          const variantIndex = i + j;
+          const variant = batchVariants[j];
+          
+          if (variant.image instanceof File && variant.image.size > 0) {
+            const compressedImage = await compressImage(variant.image, 800, 0.7);
+            batchFormData.append(`variantImage_${variantIndex}`, compressedImage);
+          }
+        }
+        
+        // Send this batch
+        const batchUrl = `/api/admin/products/${productId}/variants-batch`;
+        const batchRes = await fetch(batchUrl, {
+          method: 'POST',
+          body: batchFormData,
+        });
+        
+        if (!batchRes.ok) {
+          const batchError = await batchRes.json();
+          console.error(`Failed to upload batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+          // Continue with other batches even if one fails
+        }
+      }
+      
+      console.log('All variants uploaded successfully');
+      alert('Product saved successfully!');
+      
+      // Reset form
+      setFormData({
+        name: "",
+        price: "",
+        description: "",
+        image: null,
+        existingImage: "",
+        admin_id: "",
+        category_id: ""
+      });
+      setVariants([]);
+      setIsModalOpen(false);
+      setEditingProduct(null);
+      setImagePreview(null);
+      
+      // Refresh products list
+      fetchProducts();
+      
+    } catch (error) {
+      console.error('Error in large product submission:', error);
+      alert('Failed to save product with all variants. Please try again with fewer variants or smaller images.');
     } finally {
       setIsSubmitting(false);
     }
@@ -476,7 +711,7 @@ export default function AdminProducts() {
         {/* Hero section */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOC00IDQtNC0xLjgtNC00IDQtMS44LTQtNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0wIDMyYzIuMiAwIDQgMS44IDQgNHMtMS44IDQtNCA0LTQtMS44LTQtNC0xLjgtNC00IDQtNC00LTEuOC00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00IDQtMS44LTQtNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOC00IDQtNC0xLjgtNC00IDQtMS44LTQtNC00IDQtNC00LTEuOC00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
           </div>
 
           <div className="relative py-16 px-6 mx-auto max-w-5xl">
@@ -1039,7 +1274,14 @@ function VariantList({ variants, setVariants, sizes }: {
                           fileSize: file?.size,
                           fileType: file?.type
                         });
-                        // Hanya set image jika file valid
+                        
+                        // Validate file size (max 5MB for variants)
+                        if (file && file.size > 5 * 1024 * 1024) {
+                          alert(`The image for variant "${variant.name}" is too large. Please select an image smaller than 5MB.`);
+                          return;
+                        }
+                        
+                        // Set image if file valid
                         if (file && file.size > 0) {
                           handleChange(idx, 'image', file);
                         } else {

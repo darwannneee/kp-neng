@@ -11,7 +11,7 @@ const nextConfig = {
   },
   api: {
     bodyParser: {
-      sizeLimit: '8mb', // Increase from default
+      sizeLimit: '16mb', // Increased further to handle multiple variants
     },
   },
   eslint: {
