@@ -579,26 +579,34 @@ export default function AdminProducts() {
         
         // Add only these variant images
         for (let j = 0; j < batchVariants.length; j++) {
-          const variantIndex = i + j;
           const variant = batchVariants[j];
           
           if (variant.image instanceof File && variant.image.size > 0) {
             const compressedImage = await compressImage(variant.image, 800, 0.7);
-            batchFormData.append(`variantImage_${variantIndex}`, compressedImage);
+            // Use j as index within this batch (what the server expects)
+            batchFormData.append(`variantImage_${j}`, compressedImage);
+            console.log(`Added compressed image for variant ${variant.name} as variantImage_${j}`);
           }
         }
         
         // Send this batch
         const batchUrl = `/api/admin/products/${productId}/variants-batch`;
+        console.log(`Sending batch to ${batchUrl} with ${batchVariants.length} variants`);
+        console.log('Variant data in this batch:', JSON.stringify(variantsData));
+        
         const batchRes = await fetch(batchUrl, {
           method: 'POST',
           body: batchFormData,
         });
         
+        // Parse response regardless of success/failure
+        const batchResponse = await batchRes.json();
+        
         if (!batchRes.ok) {
-          const batchError = await batchRes.json();
-          console.error(`Failed to upload batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
+          console.error(`Failed to upload batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchResponse);
           // Continue with other batches even if one fails
+        } else {
+          console.log(`Batch ${Math.floor(i/BATCH_SIZE) + 1} uploaded successfully:`, batchResponse);
         }
       }
       

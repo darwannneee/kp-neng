@@ -22,6 +22,10 @@ export async function POST(
     
     const variantsData = JSON.parse(variantsString);
     
+    // Debug info
+    console.log(`Processing ${variantsData.length} variants for product ID: ${productId}`);
+    console.log('Variants data:', JSON.stringify(variantsData));
+    
     // Process each variant in the batch
     for (let i = 0; i < variantsData.length; i++) {
       const variant = variantsData[i];
@@ -48,29 +52,46 @@ export async function POST(
         variantImageUrl = variantUrlData.publicUrl;
       }
       
+      // Prepare variant data object
+      const variantObject = {
+        id: variantId,
+        name: variant.name,
+        product_id: productId,
+        image_url: variantImageUrl,
+      };
+      
+      console.log(`Upserting variant: ${variant.name} (ID: ${variantId}) for product: ${productId}`);
+      console.log('Variant data:', JSON.stringify(variantObject));
+      
       // Insert or update variant
       const { data: variantData, error: variantError } = await supabase
         .from("variants")
-        .upsert({
-          id: variantId,
-          name: variant.name,
-          product_id: productId,
-          image_url: variantImageUrl,
-        })
+        .upsert(variantObject)
         .select();
       
       if (variantError) {
         console.error("Error upserting variant:", variantError);
+        console.error("Error details:", JSON.stringify(variantError));
         continue;
+      } else {
+        console.log(`Successfully upserted variant: ${variant.name}`, JSON.stringify(variantData));
       }
       
       // Insert sizes for this variant
       if (variant.sizes && variant.sizes.length > 0) {
+        console.log(`Processing ${variant.sizes.length} sizes for variant: ${variant.name} (ID: ${variantId})`);
+        
         // Delete existing variant_sizes first to avoid duplicates
-        await supabase
+        const { error: deleteError } = await supabase
           .from("variant_sizes")
           .delete()
           .eq("variant_id", variantId);
+        
+        if (deleteError) {
+          console.error("Error deleting existing variant sizes:", deleteError);
+        } else {
+          console.log(`Successfully deleted existing sizes for variant: ${variantId}`);
+        }
         
         // Prepare the size mappings
         const sizeMappings = variant.sizes.map((size: { size_id: string }) => ({
@@ -79,15 +100,23 @@ export async function POST(
           size_id: size.size_id,
         }));
         
+        console.log('Size mappings to insert:', JSON.stringify(sizeMappings));
+        
         // Insert the new size mappings
-        const { error: sizeError } = await supabase
+        const { data: sizeData, error: sizeError } = await supabase
           .from("variant_sizes")
-          .insert(sizeMappings);
+          .insert(sizeMappings)
+          .select();
         
         if (sizeError) {
           console.error("Error inserting variant sizes:", sizeError);
+          console.error("Error details:", JSON.stringify(sizeError));
           continue;
+        } else {
+          console.log(`Successfully inserted ${sizeMappings.length} sizes for variant: ${variant.name}`);
         }
+      } else {
+        console.log(`No sizes to process for variant: ${variant.name} (ID: ${variantId})`);
       }
     }
     
