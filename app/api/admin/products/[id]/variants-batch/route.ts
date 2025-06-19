@@ -14,6 +14,13 @@ export async function POST(
     
     const formData = await request.formData();
     
+    // Log all form data entries for debugging
+    console.log(`Received form data for product ID: ${productId}`);
+    console.log('Form data entries:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`Key: ${key}, Type: ${typeof value}, ${value instanceof File ? `File size: ${(value as File).size} bytes` : 'Not a file'}`);
+    }
+    
     // Get the variants JSON data
     const variantsString = formData.get("variants") as string;
     if (!variantsString) {
@@ -35,21 +42,35 @@ export async function POST(
       // Upload variant image if exists
       let variantImageUrl = variant.image_url;
       if (variantImageFile && variantImageFile.size > 0) {
-        const variantImageName = `${productId}_${variantId}_${Date.now()}`;
-        const { data: variantUploadData, error: variantUploadError } = await supabase.storage
-          .from("variants")
-          .upload(variantImageName, variantImageFile);
+        console.log(`Found image file for variant ${i}, size: ${variantImageFile.size} bytes`);
         
-        if (variantUploadError) {
-          console.error("Error uploading variant image:", variantUploadError);
-          continue; // Skip this variant but continue with others
+        try {
+          // Use the same approach as in the main products route
+          const variantFileName = `${productId}_${variantId}_${Date.now()}`;
+          
+          console.log(`Uploading image for variant ${variant.name} with name: ${variantFileName}`);
+          const { data: uploadData, error: variantUploadError } = await supabase.storage
+            .from("ecoute")  // Using the same bucket as main products
+            .upload(`variants/${variantFileName}`, variantImageFile, { 
+              contentType: variantImageFile.type || 'image/jpeg'
+            });
+          
+          if (variantUploadError) {
+            console.error(`Error uploading variant image for ${variant.name}:`, variantUploadError);
+            continue; // Skip this variant but continue with others
+          }
+          
+          // Get the public URL using the same method as in products route
+          variantImageUrl = supabase.storage
+            .from("ecoute")
+            .getPublicUrl(`variants/${variantFileName}`).data.publicUrl;
+          
+          console.log(`Image uploaded successfully for variant ${variant.name}, URL: ${variantImageUrl}`);
+        } catch (imageError) {
+          console.error(`Exception processing image for variant ${variant.name}:`, imageError);
         }
-        
-        const { data: variantUrlData } = await supabase.storage
-          .from("variants")
-          .getPublicUrl(variantImageName);
-        
-        variantImageUrl = variantUrlData.publicUrl;
+      } else {
+        console.log(`No image file found for variant ${i} (${variant.name})`);
       }
       
       // Prepare variant data object
@@ -63,61 +84,61 @@ export async function POST(
       console.log(`Upserting variant: ${variant.name} (ID: ${variantId}) for product: ${productId}`);
       console.log('Variant data:', JSON.stringify(variantObject));
       
-      // Insert or update variant
-      const { data: variantData, error: variantError } = await supabase
-        .from("variants")
-        .upsert(variantObject)
-        .select();
-      
-      if (variantError) {
-        console.error("Error upserting variant:", variantError);
-        console.error("Error details:", JSON.stringify(variantError));
+      // Add the variant to database - using the same approach as products route
+      try {
+        console.log(`Adding variant ${variant.name} to database for product ${productId}`);
+        
+        // Use the correct table name - product_variants instead of variants
+        const { data: variantData, error: variantError } = await supabase
+          .from("product_variants")  // Changed from "variants" to "product_variants"
+          .insert({
+            product_id: productId,
+            name: variant.name,
+            image_url: variantImageUrl
+          })
+          .select()
+          .single();
+          
+        if (variantError) {
+          console.error("Error adding variant:", variantError.code, variantError.message);
+          console.error("Error details:", JSON.stringify(variantError));
+          continue;  // Skip to next variant
+        } else {
+          console.log(`Successfully added variant: ${variant.name}`, JSON.stringify(variantData));
+          
+          // Store the variant ID for sizes
+          const variantDbId = variantData.id;
+          
+          // Now we work with the correct variant ID from the database
+          
+          // Process sizes using this variant ID
+          if (variant.sizes && variant.sizes.length > 0) {
+            console.log(`Processing ${variant.sizes.length} sizes for variant: ${variant.name} (ID: ${variantDbId})`);
+            
+            // Map sizes to variant_sizes format
+            const sizeMappings = variant.sizes.map((size: { size_id: string }) => ({
+              variant_id: variantDbId,
+              size_id: size.size_id
+            }));
+            
+            // Add sizes for this variant
+            const { error: sizeError } = await supabase
+              .from("variant_sizes")
+              .insert(sizeMappings);
+              
+            if (sizeError) {
+              console.error("Error adding variant sizes:", sizeError);
+            } else {
+              console.log(`Successfully added ${sizeMappings.length} sizes for variant: ${variant.name}`);
+            }
+          }
+        }
+      } catch (dbError) {
+        console.error(`Unexpected error during database operation for variant ${variant.name}:`, dbError);
         continue;
-      } else {
-        console.log(`Successfully upserted variant: ${variant.name}`, JSON.stringify(variantData));
       }
-      
-      // Insert sizes for this variant
-      if (variant.sizes && variant.sizes.length > 0) {
-        console.log(`Processing ${variant.sizes.length} sizes for variant: ${variant.name} (ID: ${variantId})`);
-        
-        // Delete existing variant_sizes first to avoid duplicates
-        const { error: deleteError } = await supabase
-          .from("variant_sizes")
-          .delete()
-          .eq("variant_id", variantId);
-        
-        if (deleteError) {
-          console.error("Error deleting existing variant sizes:", deleteError);
-        } else {
-          console.log(`Successfully deleted existing sizes for variant: ${variantId}`);
-        }
-        
-        // Prepare the size mappings
-        const sizeMappings = variant.sizes.map((size: { size_id: string }) => ({
-          id: uuidv4(),
-          variant_id: variantId,
-          size_id: size.size_id,
-        }));
-        
-        console.log('Size mappings to insert:', JSON.stringify(sizeMappings));
-        
-        // Insert the new size mappings
-        const { data: sizeData, error: sizeError } = await supabase
-          .from("variant_sizes")
-          .insert(sizeMappings)
-          .select();
-        
-        if (sizeError) {
-          console.error("Error inserting variant sizes:", sizeError);
-          console.error("Error details:", JSON.stringify(sizeError));
-          continue;
-        } else {
-          console.log(`Successfully inserted ${sizeMappings.length} sizes for variant: ${variant.name}`);
-        }
-      } else {
-        console.log(`No sizes to process for variant: ${variant.name} (ID: ${variantId})`);
-      }
+      // Sizes are now processed inside the variant insertion block above
+      // This ensures that we're using the correct variant ID from the database
     }
     
     return NextResponse.json({ success: true, message: "Variants batch processed" });

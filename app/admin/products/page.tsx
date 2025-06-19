@@ -582,10 +582,36 @@ export default function AdminProducts() {
           const variant = batchVariants[j];
           
           if (variant.image instanceof File && variant.image.size > 0) {
-            const compressedImage = await compressImage(variant.image, 800, 0.7);
-            // Use j as index within this batch (what the server expects)
-            batchFormData.append(`variantImage_${j}`, compressedImage);
-            console.log(`Added compressed image for variant ${variant.name} as variantImage_${j}`);
+            try {
+              console.log(`Processing image for variant ${variant.name}`, {
+                originalSize: variant.image.size,
+                type: variant.image.type,
+                name: variant.image.name
+              });
+              
+              const compressedImage = await compressImage(variant.image, 800, 0.7);
+              
+              // Make sure the image has the right MIME type
+              const finalImage = new File(
+                [compressedImage], 
+                variant.image.name || `variant_${j}.jpg`,
+                { 
+                  type: compressedImage.type || 'image/jpeg',
+                  lastModified: Date.now()
+                }
+              );
+              
+              // Use j as index within this batch (what the server expects)
+              batchFormData.append(`variantImage_${j}`, finalImage);
+              console.log(`Added compressed image for variant ${variant.name} as variantImage_${j}`, {
+                compressedSize: finalImage.size,
+                type: finalImage.type
+              });
+            } catch (imageError) {
+              console.error(`Error processing image for variant ${variant.name}:`, imageError);
+            }
+          } else {
+            console.log(`No image to upload for variant ${variant.name}`);
           }
         }
         
