@@ -15,53 +15,6 @@ import {
 import { VariantType, VariantOption } from '@/utils/types'
 import React from "react"
 
-// Helper function to compress images before upload
-const compressImage = async (file: File, maxWidth = 1200, quality = 0.7): Promise<File> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = document.createElement('img');
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        
-        // Calculate dimensions while maintaining aspect ratio
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > maxWidth) {
-          height = Math.round(height * maxWidth / width);
-          width = maxWidth;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        // Convert to blob with reduced quality
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], file.name, {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              }));
-            } else {
-              // Fallback to original file if compression fails
-              resolve(file);
-            }
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-    };
-  });
-};
-
 const LoraFontBold = Lora({
   weight: '400',
   subsets: ['latin']
@@ -271,10 +224,21 @@ export default function AdminProducts() {
     if (name === 'image' && files && files.length > 0) {
       const file = files[0];
       
-      // Validate file size (max 10MB)
+      // Hard max file size limit (10MB)
       if (file.size > 10 * 1024 * 1024) {
         alert('Image file is too large. Please select an image smaller than 10MB.');
         return;
+      }
+      
+      // Warning for large files (2MB-10MB)
+      if (file.size > 2 * 1024 * 1024) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const proceed = confirm(`File size is large (${fileSizeMB}MB) and may cause slow uploads. Continue with this file?`);
+        if (!proceed) {
+          // Reset file input
+          (e.target as HTMLInputElement).value = '';
+          return;
+        }
       }
       
       // Create URL for preview
@@ -383,17 +347,9 @@ export default function AdminProducts() {
       formDataObj.append("category_id", formData.category_id);
       formDataObj.append("admin_id", adminId);
       
-      // Compress and add main product image if exists
+      // Add main product image if exists (no compression)
       if (formData.image) {
-        // Check if image size is large
-        if (formData.image.size > 1000000) { // If larger than ~1MB
-          console.log('Compressing main product image:', formData.image.name);
-          const compressedImage = await compressImage(formData.image, 1000, 0.7);
-          console.log('Image compressed from', formData.image.size, 'to', compressedImage.size, 'bytes');
-          formDataObj.append("image", compressedImage);
-        } else {
-          formDataObj.append("image", formData.image);
-        }
+        formDataObj.append("image", formData.image);
       }
       if (formData.existingImage) {
         formDataObj.append("existingImage", formData.existingImage);
@@ -408,12 +364,24 @@ export default function AdminProducts() {
       }));
       formDataObj.append('variants', JSON.stringify(variantsData));
       
-      // Compress and add variant images in batches to avoid hitting size limits
+      // Add variant images in batches to avoid hitting size limits
       const MAX_VARIANTS_PER_BATCH = 5; // Adjust based on your image sizes
       
       // Process variant images in batches
       for (let i = 0; i < processedVariants.length; i += MAX_VARIANTS_PER_BATCH) {
         const batch = processedVariants.slice(i, i + MAX_VARIANTS_PER_BATCH);
+        
+        // Calculate total batch size for warning if needed
+        let batchTotalSize = 0;
+        batch.forEach(variant => {
+          if (variant.image instanceof File) {
+            batchTotalSize += variant.image.size;
+          }
+        });
+        
+        if (batchTotalSize > 5 * 1024 * 1024) {
+          console.warn(`Large batch size detected: ${(batchTotalSize / (1024 * 1024)).toFixed(2)}MB. Upload may be slow.`);
+        }
         
         // Process each variant in this batch
         for (let j = 0; j < batch.length; j++) {
@@ -426,14 +394,8 @@ export default function AdminProducts() {
               fileSize: variant.image.size
             });
             
-            // Compress the image if it's larger than ~500KB
-            if (variant.image.size > 500000) {
-              const compressedImage = await compressImage(variant.image, 800, 0.7);
-              console.log(`Variant image compressed from ${variant.image.size} to ${compressedImage.size} bytes`);
-              formDataObj.append(`variantImage_${index}`, compressedImage);
-            } else {
-              formDataObj.append(`variantImage_${index}`, variant.image);
-            }
+            // Add image without compression
+            formDataObj.append(`variantImage_${index}`, variant.image);
           }
         }
       }
@@ -505,10 +467,13 @@ export default function AdminProducts() {
       initialFormData.append("category_id", formData.category_id);
       initialFormData.append("admin_id", adminId);
       
-      // Add main image
+      // Add main image (without compression)
       if (formData.image) {
-        const compressedMainImage = await compressImage(formData.image, 1000, 0.7);
-        initialFormData.append("image", compressedMainImage);
+        // Check total size for large product submission
+        const imageSizeMB = formData.image.size / (1024 * 1024);
+        console.log(`Main image size for large product submission: ${imageSizeMB.toFixed(2)}MB`);
+        
+        initialFormData.append("image", formData.image);
       }
       if (formData.existingImage) {
         initialFormData.append("existingImage", formData.existingImage);
@@ -584,28 +549,17 @@ export default function AdminProducts() {
           if (variant.image instanceof File && variant.image.size > 0) {
             try {
               console.log(`Processing image for variant ${variant.name}`, {
-                originalSize: variant.image.size,
+                size: variant.image.size,
                 type: variant.image.type,
                 name: variant.image.name
               });
               
-              const compressedImage = await compressImage(variant.image, 800, 0.7);
-              
-              // Make sure the image has the right MIME type
-              const finalImage = new File(
-                [compressedImage], 
-                variant.image.name || `variant_${j}.jpg`,
-                { 
-                  type: compressedImage.type || 'image/jpeg',
-                  lastModified: Date.now()
-                }
-              );
-              
-              // Use j as index within this batch (what the server expects)
-              batchFormData.append(`variantImage_${j}`, finalImage);
-              console.log(`Added compressed image for variant ${variant.name} as variantImage_${j}`, {
-                compressedSize: finalImage.size,
-                type: finalImage.type
+              // Use original image without compression
+              // Just use j as index within this batch (what the server expects)
+              batchFormData.append(`variantImage_${j}`, variant.image);
+              console.log(`Added image for variant ${variant.name} as variantImage_${j}`, {
+                size: variant.image.size,
+                type: variant.image.type
               });
             } catch (imageError) {
               console.error(`Error processing image for variant ${variant.name}:`, imageError);
@@ -741,7 +695,7 @@ export default function AdminProducts() {
   return (
     <>
       <NavbarAdmin />
-      <div className={`${LoraFontBold.className} pt-16 md:pl-64 min-h-screen bg-gray-50`}>
+      <div className={`pt-16 md:pl-64 min-h-screen bg-gray-50`}>
         {/* Hero section */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="absolute inset-0 opacity-20">
@@ -1274,10 +1228,6 @@ function VariantList({ variants, setVariants, sizes }: {
                   required
                 />
               </div>
-
-              {/* Bagian harga varian dihapus karena tidak dibutuhkan */}
-
-              {/* Bagian stok varian dihapus karena tidak dibutuhkan */}
             </div>
             
             <div className="space-y-4">
@@ -1309,10 +1259,22 @@ function VariantList({ variants, setVariants, sizes }: {
                           fileType: file?.type
                         });
                         
-                        // Validate file size (max 5MB for variants)
+                        // Hard max file size limit (5MB for variants)
                         if (file && file.size > 5 * 1024 * 1024) {
                           alert(`The image for variant "${variant.name}" is too large. Please select an image smaller than 5MB.`);
+                          e.target.value = ''; // Clear file input
                           return;
+                        }
+                        
+                        // Warning for large files (1MB-5MB)
+                        if (file && file.size > 1 * 1024 * 1024) {
+                          const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                          const proceed = confirm(`File size for variant "${variant.name}" is large (${fileSizeMB}MB) and may cause slow uploads. Continue with this file?`);
+                          if (!proceed) {
+                            // Reset file input
+                            e.target.value = '';
+                            return;
+                          }
                         }
                         
                         // Set image if file valid
