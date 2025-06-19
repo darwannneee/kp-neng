@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KPN Engineering",
-  description: "Solusi Teknik Terpercaya",
+  title: "Ecoute Marketplace",
+  description: "in Ecoute we Trust",
 };
 
 export default function RootLayout({
