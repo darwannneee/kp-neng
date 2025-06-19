@@ -224,16 +224,24 @@ export default function AdminProducts() {
     if (name === 'image' && files && files.length > 0) {
       const file = files[0];
       
-      // Hard max file size limit (10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('Image file is too large. Please select an image smaller than 10MB.');
+      // Hard max file size limit (8MB)
+      if (file.size > 8 * 1024 * 1024) {
+        alert('Main product image is too large. Please select an image smaller than 8MB.');
+        // Reset file input
+        (e.target as HTMLInputElement).value = '';
         return;
       }
       
-      // Warning for large files (2MB-10MB)
-      if (file.size > 2 * 1024 * 1024) {
+      // Warning for large files (1MB-8MB)
+      if (file.size > 1024 * 1024) {
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        const proceed = confirm(`File size is large (${fileSizeMB}MB) and may cause slow uploads. Continue with this file?`);
+        const proceed = confirm(
+          `Main product image is ${fileSizeMB}MB, which is quite large.\n\n` +
+          `Large images may cause:\n` +
+          `- Slow uploads\n` +
+          `- Errors when combined with multiple variants\n\n` +
+          `Continue with this file?`
+        );
         if (!proceed) {
           // Reset file input
           (e.target as HTMLInputElement).value = '';
@@ -250,6 +258,8 @@ export default function AdminProducts() {
         ...formData,
         image: file,
       });
+      
+      console.log(`Main product image selected: ${file.name}, size: ${(file.size / (1024 * 1024)).toFixed(2)}MB`);
     } else {
       // Handle other form fields
       setFormData({
@@ -322,10 +332,36 @@ export default function AdminProducts() {
         }
       }
       
-      // If there are more than 8 variants, consider split submission to avoid 413 errors
-      if (variants.length > 8) {
+      // Calculate total payload size to determine if we need the sequential approach
+      let totalPayloadSize = 0;
+      
+      // Add estimated size of form data
+      totalPayloadSize += JSON.stringify(formData).length;
+      
+      // Add main image size
+      if (formData.image) {
+        totalPayloadSize += formData.image.size;
+      }
+      
+      // Add variant sizes including images
+      variants.forEach(variant => {
+        totalPayloadSize += JSON.stringify(variant).length;
+        if (variant.image) {
+          totalPayloadSize += variant.image.size;
+        }
+      });
+      
+      const totalSizeMB = totalPayloadSize / (1024 * 1024);
+      console.log(`Estimated total payload size: ${totalSizeMB.toFixed(2)}MB`);
+      
+      // More aggressive condition: Any decent-sized payload or more than 2 variants, use sequential approach
+      // This is because of Vercel's strict payload limits
+      if (totalSizeMB > 2 || variants.length > 2) {
+        console.log('Using sequential upload approach due to payload size or multiple variants');
         return await handleLargeProductSubmission(adminId, price);
       }
+      
+      // Only use this approach for very small payloads
       
       // Process variants and create FormData
       const processedVariants = variants.map(variant => {
@@ -355,7 +391,7 @@ export default function AdminProducts() {
         formDataObj.append("existingImage", formData.existingImage);
       }
       
-      // Tambahkan data varian sebagai JSON string terpisah dari file varian
+      // Add variant data as JSON string separate from variant files
       const variantsData = processedVariants.map(v => ({
         id: v.id,
         name: v.name,
@@ -364,43 +400,22 @@ export default function AdminProducts() {
       }));
       formDataObj.append('variants', JSON.stringify(variantsData));
       
-      // Add variant images in batches to avoid hitting size limits
-      const MAX_VARIANTS_PER_BATCH = 5; // Adjust based on your image sizes
-      
-      // Process variant images in batches
-      for (let i = 0; i < processedVariants.length; i += MAX_VARIANTS_PER_BATCH) {
-        const batch = processedVariants.slice(i, i + MAX_VARIANTS_PER_BATCH);
+      // Add variant images
+      for (let i = 0; i < processedVariants.length; i++) {
+        const variant = processedVariants[i];
         
-        // Calculate total batch size for warning if needed
-        let batchTotalSize = 0;
-        batch.forEach(variant => {
-          if (variant.image instanceof File) {
-            batchTotalSize += variant.image.size;
-          }
-        });
-        
-        if (batchTotalSize > 5 * 1024 * 1024) {
-          console.warn(`Large batch size detected: ${(batchTotalSize / (1024 * 1024)).toFixed(2)}MB. Upload may be slow.`);
-        }
-        
-        // Process each variant in this batch
-        for (let j = 0; j < batch.length; j++) {
-          const variant = batch[j];
-          const index = i + j;
+        if (variant.image instanceof File && variant.image.size > 0) {
+          console.log(`Adding image for variant ${variant.name}`, {
+            fileName: variant.image.name,
+            fileSize: variant.image.size
+          });
           
-          if (variant.image instanceof File && variant.image.size > 0) {
-            console.log(`Processing variant image for ${variant.name}`, {
-              fileName: variant.image.name,
-              fileSize: variant.image.size
-            });
-            
-            // Add image without compression
-            formDataObj.append(`variantImage_${index}`, variant.image);
-          }
+          // Add image without compression
+          formDataObj.append(`variantImage_${i}`, variant.image);
         }
       }
 
-      console.log('Submitting form data:', {
+      console.log('Submitting form data for small payload:', {
         name: formData.name,
         price: formData.price,
         description: formData.description,
@@ -408,7 +423,7 @@ export default function AdminProducts() {
         adminId: adminId,
         hasImage: !!formData.image,
         existingImage: formData.existingImage,
-        hasVariantsData: processedVariants.length > 0
+        variantsCount: processedVariants.length
       });
 
       const method = editingProduct ? "PUT" : "POST";
@@ -425,8 +440,15 @@ export default function AdminProducts() {
       
       if (!res.ok) {
         console.error('Server error:', data);
-        alert(`Error: ${data.error || 'Failed to save product'}`);
-        return;
+        
+        // If we get a payload too large error, try the sequential approach
+        if (res.status === 413) {
+          console.log('Got 413 error, switching to sequential upload approach');
+          return await handleLargeProductSubmission(adminId, price);
+        } else {
+          alert(`Error: ${data.error || 'Failed to save product'}`);
+          return;
+        }
       }
 
       console.log('Success:', data);
@@ -510,10 +532,9 @@ export default function AdminProducts() {
         return;
       }
       
-      console.log('Product created successfully. Adding variants now in batches...');
+      console.log('Product created successfully. Adding variants one by one...');
       
-      // Step 2: Add variants in batches to avoid payload size limits
-      const BATCH_SIZE = 3; // Number of variants per batch, adjust as needed
+      // Step 2: Add variants one by one to avoid payload size limits entirely
       const processedVariants = variants.map(variant => {
         return {
           id: variant.id,
@@ -526,67 +547,72 @@ export default function AdminProducts() {
         };
       });
       
-      // Process variants in batches
-      for (let i = 0; i < processedVariants.length; i += BATCH_SIZE) {
-        const batchVariants = processedVariants.slice(i, i + BATCH_SIZE);
-        console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(processedVariants.length/BATCH_SIZE)}`);
+      // Process variants one by one - most reliable way to avoid payload size limits
+      for (let i = 0; i < processedVariants.length; i++) {
+        const variant = processedVariants[i];
+        console.log(`Processing variant ${i+1} of ${processedVariants.length}: ${variant.name}`);
         
-        const batchFormData = new FormData();
+        const variantFormData = new FormData();
         
-        // Add only the variants in this batch
-        const variantsData = batchVariants.map(v => ({
-          id: v.id,
-          name: v.name,
-          image_url: v.image_url,
-          sizes: v.sizes
-        }));
-        batchFormData.append('variants', JSON.stringify(variantsData));
+        // Add just this single variant data
+        const variantData = {
+          id: variant.id,
+          name: variant.name,
+          image_url: variant.image_url,
+          sizes: variant.sizes
+        };
+        variantFormData.append('variants', JSON.stringify([variantData]));
         
-        // Add only these variant images
-        for (let j = 0; j < batchVariants.length; j++) {
-          const variant = batchVariants[j];
-          
-          if (variant.image instanceof File && variant.image.size > 0) {
-            try {
-              console.log(`Processing image for variant ${variant.name}`, {
-                size: variant.image.size,
-                type: variant.image.type,
-                name: variant.image.name
-              });
-              
-              // Use original image without compression
-              // Just use j as index within this batch (what the server expects)
-              batchFormData.append(`variantImage_${j}`, variant.image);
-              console.log(`Added image for variant ${variant.name} as variantImage_${j}`, {
-                size: variant.image.size,
-                type: variant.image.type
-              });
-            } catch (imageError) {
-              console.error(`Error processing image for variant ${variant.name}:`, imageError);
-            }
-          } else {
-            console.log(`No image to upload for variant ${variant.name}`);
+        // Add just this variant image
+        if (variant.image instanceof File && variant.image.size > 0) {
+          try {
+            console.log(`Processing image for variant ${variant.name}`, {
+              size: variant.image.size,
+              type: variant.image.type,
+              name: variant.image.name
+            });
+            
+            // Add image - single variant, so always index 0
+            variantFormData.append(`variantImage_0`, variant.image);
+            console.log(`Added image for variant ${variant.name} as variantImage_0`, {
+              size: variant.image.size,
+              type: variant.image.type
+            });
+          } catch (imageError) {
+            console.error(`Error processing image for variant ${variant.name}:`, imageError);
           }
+        } else {
+          console.log(`No image to upload for variant ${variant.name}`);
         }
         
-        // Send this batch
-        const batchUrl = `/api/admin/products/${productId}/variants-batch`;
-        console.log(`Sending batch to ${batchUrl} with ${batchVariants.length} variants`);
-        console.log('Variant data in this batch:', JSON.stringify(variantsData));
+        // Send this single variant
+        const variantUrl = `/api/admin/products/${productId}/variants-batch`;
+        console.log(`Sending single variant to ${variantUrl}: ${variant.name}`);
         
-        const batchRes = await fetch(batchUrl, {
-          method: 'POST',
-          body: batchFormData,
-        });
+        // Add delay between uploads to avoid overwhelming the server
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
         
-        // Parse response regardless of success/failure
-        const batchResponse = await batchRes.json();
-        
-        if (!batchRes.ok) {
-          console.error(`Failed to upload batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchResponse);
-          // Continue with other batches even if one fails
-        } else {
-          console.log(`Batch ${Math.floor(i/BATCH_SIZE) + 1} uploaded successfully:`, batchResponse);
+        try {
+          const variantRes = await fetch(variantUrl, {
+            method: 'POST',
+            body: variantFormData,
+          });
+          
+          if (!variantRes.ok) {
+            const errorData = await variantRes.json();
+            console.error(`Failed to upload variant ${i+1} (${variant.name}):`, errorData);
+            alert(`Error uploading variant "${variant.name}": ${errorData.error || 'Unknown error'}`);
+            // Continue with other variants
+          } else {
+            const successData = await variantRes.json();
+            console.log(`Variant ${i+1} (${variant.name}) uploaded successfully:`, successData);
+          }
+        } catch (variantError) {
+          console.error(`Network error uploading variant ${variant.name}:`, variantError);
+          alert(`Network error uploading variant "${variant.name}". Please check your connection and try again.`);
+          // Continue with other variants
         }
       }
       
@@ -1259,21 +1285,49 @@ function VariantList({ variants, setVariants, sizes }: {
                           fileType: file?.type
                         });
                         
-                        // Hard max file size limit (5MB for variants)
-                        if (file && file.size > 5 * 1024 * 1024) {
-                          alert(`The image for variant "${variant.name}" is too large. Please select an image smaller than 5MB.`);
+                        // Hard max file size limit (3MB for variants - stricter than before)
+                        if (file && file.size > 3 * 1024 * 1024) {
+                          alert(`The image for variant "${variant.name}" is too large. Please select an image smaller than 3MB to avoid upload issues.`);
                           e.target.value = ''; // Clear file input
                           return;
                         }
                         
-                        // Warning for large files (1MB-5MB)
-                        if (file && file.size > 1 * 1024 * 1024) {
+                        // Warning for medium-sized files (500KB-3MB)
+                        if (file && file.size > 500 * 1024) {
                           const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                          const proceed = confirm(`File size for variant "${variant.name}" is large (${fileSizeMB}MB) and may cause slow uploads. Continue with this file?`);
+                          const proceed = confirm(
+                            `File size for variant "${variant.name}" is ${fileSizeMB}MB.\n\n` +
+                            `Large files may cause upload errors with multiple variants.\n\n` + 
+                            `We recommend:\n` +
+                            `- Smaller images (under 500KB)\n` +
+                            `- Adding variants one by one for large images\n\n` +
+                            `Continue with this file?`
+                          );
                           if (!proceed) {
                             // Reset file input
                             e.target.value = '';
                             return;
+                          }
+                        }
+                        
+                        // Check combined variant sizes if this is added
+                        if (file && variants.length > 1) {
+                          let totalSize = file.size;
+                          variants.forEach((v, i) => {
+                            // Skip current variant as we're replacing it
+                            if (i !== idx && v.image instanceof File) {
+                              totalSize += v.image.size;
+                            }
+                          });
+                          
+                          const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+                          console.log(`Total variant images size would be: ${totalSizeMB}MB`);
+                          
+                          if (totalSize > 4 * 1024 * 1024) {
+                            alert(
+                              `Warning: Total variant images size (${totalSizeMB}MB) is large.\n\n` +
+                              `The product will be uploaded using our sequential approach, which may be slower but more reliable.`
+                            );
                           }
                         }
                         

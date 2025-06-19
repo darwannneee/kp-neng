@@ -11,8 +11,9 @@ const nextConfig = {
   },
   api: {
     bodyParser: {
-      sizeLimit: '16mb', // Increased further to handle multiple variants
+      sizeLimit: '50mb', // Maximum limit - though on Vercel, function limits will still apply
     },
+    responseLimit: false, // No limit on response size
   },
   eslint: {
     // Warning instead of error during builds
@@ -29,4 +30,4 @@ const nextConfig = {
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig
