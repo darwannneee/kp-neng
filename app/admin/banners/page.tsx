@@ -76,13 +76,29 @@ export default function AdminBanners() {
   const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
+    // Check admin authentication
+    const adminId = localStorage.getItem("adminId");
+    if (!adminId) {
+      router.push("/admin/login");
+      return;
+    }
+    
     fetchBanners();
     fetchProducts();
-  }, []);
+  }, [router]);
 
   const fetchBanners = async () => {
     try {
-      const res = await fetch("/api/admin/banners");
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        throw new Error("Admin not authenticated");
+      }
+
+      const res = await fetch("/api/admin/banners", {
+        headers: {
+          'x-admin-id': adminId
+        }
+      });
       if (!res.ok) throw new Error("Gagal mengambil banner");
       const data = await res.json();
       setBanners(data);
@@ -96,7 +112,16 @@ export default function AdminBanners() {
 
   const fetchProducts = async () => {
     try {
-      const res = await fetch("/api/admin/products?include=admin,category");
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        throw new Error("Admin not authenticated");
+      }
+
+      const res = await fetch("/api/admin/products?include=admin,category", {
+        headers: {
+          'x-admin-id': adminId
+        }
+      });
       if (!res.ok) throw new Error("Gagal mengambil produk");
       const data = await res.json();
       console.log('Fetched Products:', data);
@@ -141,8 +166,16 @@ export default function AdminBanners() {
     if (!confirm("Apakah Anda yakin ingin menghapus banner ini?")) return;
 
     try {
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        throw new Error("Admin not authenticated");
+      }
+
       const res = await fetch(`/api/admin/banners?id=${id}`, {
         method: "DELETE",
+        headers: {
+          'x-admin-id': adminId
+        }
       });
 
       if (!res.ok) throw new Error("Gagal menghapus banner");
@@ -157,6 +190,11 @@ export default function AdminBanners() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        throw new Error("Admin not authenticated");
+      }
+
       const method = isEditing ? "PUT" : "POST";
       const url = "/api/admin/banners";
       
@@ -201,6 +239,7 @@ export default function AdminBanners() {
         method,
         headers: {
           "Content-Type": "application/json",
+          'x-admin-id': adminId
         },
         body: JSON.stringify(body),
       });
@@ -220,6 +259,11 @@ export default function AdminBanners() {
 
   const handleMove = async (id: string, direction: 'up' | 'down') => {
     try {
+      const adminId = localStorage.getItem("adminId");
+      if (!adminId) {
+        throw new Error("Admin not authenticated");
+      }
+
       const banner = banners.find(b => b.id === id);
       if (!banner) return;
 
@@ -235,6 +279,7 @@ export default function AdminBanners() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          'x-admin-id': adminId
         },
         body: JSON.stringify({
           id: banner.id,
@@ -250,6 +295,7 @@ export default function AdminBanners() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          'x-admin-id': adminId
         },
         body: JSON.stringify({
           id: targetBanner.id,
@@ -322,7 +368,7 @@ export default function AdminBanners() {
         {/* Hero section */}
         <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOCA0LTQgNC00LTEuOC00LTQgMS44LTQgNC00em0wIDMyYzIuMiAwIDQgMS44IDQgNHMtMS44IDQtNCA0LTQtMS44LTQtNCAxLjgtNCA0LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC40Ij48cGF0aCBkPSJNMzYgMzRjMC0yLjIgMS44LTQgNC00czQgMS44IDQgNC0xLjggNC00IDQtNC0xLjgtNC00eiIvPjxwYXRoIGQ9Ik0xNiAxNmMyLjIgMCA0IDEuOCA0IDRzLTEuOC00IDQtNC0xLjgtNC00IDQtMS44LTQtNC00IDQtNC0xLjgtNC00LTR6Ii8+PC9nPjwvZz48L3N2Zz4=')] bg-center"></div>
           </div>
           <div className="relative px-4 py-16 sm:px-6 sm:py-24 lg:py-32 lg:px-8">
             <h1 className="text-center text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
@@ -628,4 +674,4 @@ export default function AdminBanners() {
       )}
     </>
   );
-} 
+}
