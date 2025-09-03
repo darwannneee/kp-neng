@@ -297,20 +297,11 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
 
             {/* Add to Cart Button */}
             <button 
-              className={`w-full py-4 rounded-full transition duration-200 ${
-                (!selectedVariant || (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize))
-                ? 'bg-gray-300 cursor-not-allowed'
-                : 'bg-black text-white hover:bg-gray-900'
-              }`}
-              disabled={!selectedVariant || (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize)}
-            >
-              {!selectedVariant 
-                ? 'Please select a variant'
-                : (selectedVariant.sizes && selectedVariant.sizes.length > 0 && !selectedSize)
-                ? 'Please select a size'
-                : 'Add to Cart'
-              }
-            </button>
+  className="w-full py-4 rounded-full transition duration-200 bg-gray-300 text-gray-600 cursor-not-allowed"
+  disabled
+>
+  Sold Out
+</button>
 
             {/* Additional Information */}
             <div className="mt-8 space-y-4">
