@@ -296,12 +296,20 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
             </div>
 
             {/* Add to Cart Button */}
-            <button 
-  className="w-full py-4 rounded-full transition duration-200 bg-gray-300 text-gray-600 cursor-not-allowed"
-  disabled
->
-  Sold Out
-</button>
+            {Math.random() > 0.5 ? (
+              <button 
+                className="w-full py-4 rounded-full transition duration-200 bg-black text-white hover:bg-gray-800"
+              >
+                Add to Cart
+              </button>
+            ) : (
+              <button 
+                className="w-full py-4 rounded-full transition duration-200 bg-gray-300 text-gray-600 cursor-not-allowed"
+                disabled
+              >
+                Sold Out
+              </button>
+            )}
 
             {/* Additional Information */}
             <div className="mt-8 space-y-4">
