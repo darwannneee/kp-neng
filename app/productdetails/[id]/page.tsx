@@ -69,7 +69,23 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
       const variantsRes = await fetch(`/api/products/${id}/variants`);
       if (variantsRes.ok) {
         const variantsData = await variantsRes.json();
-        setVariants(variantsData);
+        
+        // Add random stock values to each variant
+        const variantsWithRandomStock = variantsData.map(variant => {
+          // Generate random stock between 0 and 20
+          const randomStock = Math.floor(Math.random() * 21); // 0 to 20
+          return {
+            ...variant,
+            stock: randomStock,
+            // Also add random stock to sizes if they exist
+            sizes: variant.sizes ? variant.sizes.map(size => ({
+              ...size,
+              stock: Math.floor(Math.random() * 21) // 0 to 20
+            })) : []
+          };
+        });
+        
+        setVariants(variantsWithRandomStock);
       }
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -240,6 +256,9 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
                             Rp {variant.price}
                           </span>
                         )}
+                        <span className={`block text-xs mt-1 ${variant.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {variant.stock > 0 ? `${variant.stock} in stock` : 'Sold out'}
+                        </span>
                       </div>
                     </button>
                   ))}
@@ -296,11 +315,11 @@ export default function ProductDetail({ params }: { params: { id: string } }) {
             </div>
 
             {/* Add to Cart Button */}
-            {Math.random() > 0.5 ? (
+            {selectedVariant && selectedVariant.stock > 0 ? (
               <button 
                 className="w-full py-4 rounded-full transition duration-200 bg-black text-white hover:bg-gray-800"
               >
-                Add to Cart
+                Add to Cart ({selectedVariant.stock} Available)
               </button>
             ) : (
               <button 
